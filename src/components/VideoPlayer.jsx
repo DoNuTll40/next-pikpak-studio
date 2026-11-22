@@ -98,6 +98,7 @@ export function VideoPlayer({
   poster,
   headerActions,
   onClose,
+  loading = false,
   variants,
   selected,
   onSelectQuality,
@@ -175,6 +176,30 @@ export function VideoPlayer({
   const [hoverSeek, setHoverSeek] = useState(null);
   const [volumeDragging, setVolumeDragging] = useState(false);
   const [seekRipple, setSeekRipple] = useState(null);
+
+  // Reset playback state smoothly inside the persistent player whenever switching to another video
+  const [trackedFileId, setTrackedFileId] = useState(fileId);
+  if (trackedFileId !== fileId) {
+    setTrackedFileId(fileId);
+    setTsSession({ offsetSec: 0, byteOffset: 0, seq: 0 });
+    setPlaying(false);
+    setBuffering(false);
+    setLoadedKey(null);
+    setCurrentTime(0);
+    setDuration(0);
+    setBuffered(0);
+    setOpenMenu(null);
+    setContextMenu(null);
+    setScrubbing(false);
+    setScrubTime(null);
+    setHoverSeek(null);
+    setControlsVisible(true);
+  }
+
+  useEffect(() => {
+    playbackRef.current = null;
+    initialAutoPlayRef.current = true;
+  }, [fileId]);
 
   const isMpegts = Boolean(source?.mpegts);
   const tsOffset = isMpegts ? tsSession.offsetSec : 0;
@@ -996,7 +1021,7 @@ export function VideoPlayer({
     }
   }
 
-  const loadingSource = loadedKey !== playbackKey && !failed;
+  const loadingSource = loading || (Boolean(source) && loadedKey !== playbackKey && !failed);
   const isLoading = loadingSource || buffering;
   const showOverlay = (!playing || controlsVisible || scrubbing || openMenu !== null || contextMenu !== null || failed) && !holding2x;
   const activeTime = scrubbing && scrubTime !== null ? scrubTime : currentTime;
@@ -1792,7 +1817,7 @@ export function VideoPlayer({
                 {title}
               </h2>
               <p className="mt-1 text-xs text-muted tabular-nums">
-                {playing ? "กำลังเล่น" : "หยุดชั่วคราว"} · {shortQualityLabel(source)} · {rate}x
+                {loading ? "กำลังโหลด…" : playing ? "กำลังเล่น" : "หยุดชั่วคราว"} · {shortQualityLabel(source)} · {rate}x
                 {totalSiblings > 1 ? ` · คลิปที่ ${currentIndex + 1}/${totalSiblings}` : ""}
               </p>
             </div>

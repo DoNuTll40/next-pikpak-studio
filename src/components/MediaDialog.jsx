@@ -1298,45 +1298,24 @@ function MediaContent({
     );
   }
 
-  if (result === null) {
-    return (
-      <div className="relative flex size-full desktop:aspect-video desktop:max-h-[calc(100dvh-32px)] items-center justify-center overflow-hidden bg-[#080d18]">
-        {item.thumbnail && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={item.thumbnail} alt="" aria-hidden="true" referrerPolicy="no-referrer"
-            className="pointer-events-none absolute inset-0 size-full object-contain opacity-45" />
-        )}
-        <OverlayHeader title={item.name} titleClass={titleClass} fileInfo={fileInfo} onClose={onClose} />
-        <span role="status" aria-label="กำลังโหลดพรีวิว"
-          className="relative z-1 grid size-12 place-items-center rounded-full bg-panel/90 text-accent shadow-md backdrop-blur-sm">
-          <LoaderCircle size={24} className="animate-spin" aria-hidden="true" />
-        </span>
-      </div>
-    );
-  }
-
-  if (!result || result.kind === "none") {
-    return (
-      <div className="flex size-full flex-col justify-center bg-panel text-foreground desktop:size-auto">
-        <OverlayHeader title={item.name} titleClass={titleClass} fileInfo={fileInfo} onClose={onClose} overlay={false} />
-        <p className="mx-auto max-w-md px-4 py-10 text-center text-sm text-muted" role="status">
-          ไม่มีลิงก์สำหรับเปิดไฟล์นี้บนเว็บ ลองเปิดพรีวิวใน PikPak Desktop เพื่ออัปเดตลิงก์
-        </p>
-      </div>
-    );
-  }
-
-  const selected = selectedQuality ?? preferredVariant(result.variants, videoQuality);
-  const activeVariant = result.variants[selected] ?? result.variants[0];
+  // For videos, NEVER unmount VideoPlayer while loading or switching sibling videos —
+  // keep the Watch Page / Mini Player layout steady and show the spinner inside the player stage!
+  const videoVariants = result && typeof result === "object" && result.kind === "video" ? result.variants : [];
+  const isLoadingVideo = result === null;
+  const noVideoLinks = !isLoadingVideo && (!result || result.kind === "none" || videoVariants.length === 0);
+  const selected = videoVariants.length > 0 ? (selectedQuality ?? preferredVariant(videoVariants, videoQuality)) : 0;
+  const activeVariant = videoVariants[selected] ?? videoVariants[0];
   const expired = Boolean(activeVariant?.expiresAt && openedAt >= activeVariant.expiresAt);
   const transportStream = /\.(?:ts|m2ts|mts)$/i.test(item.name);
-  const errorMessage = expired
-    ? `ลิงก์วิดีโอนี้หมดอายุแล้ว (${formatStudioDate(activeVariant.expiresAt)}) กรุณาเปิดคลิปใน PikPak Desktop เพื่ออัปเดตลิงก์ใหม่`
-    : activeVariant?.codec === "hevc"
-      ? "เบราว์เซอร์นี้ไม่รองรับการถอดรหัส HEVC (H.265) หรือลิงก์อาจหมดอายุ ลองสลับไปที่ \"ต้นฉบับ\""
-      : transportStream
-        ? "เปิดวิดีโอคุณภาพนี้ไม่ได้ เบราว์เซอร์อาจไม่รองรับไฟล์ TS หรือลิงก์อาจหมดอายุ"
-        : "เปิดวิดีโอคุณภาพนี้ไม่ได้ ลิงก์อาจหมดอายุหรือเบราว์เซอร์ไม่รองรับไฟล์";
+  const errorMessage = noVideoLinks
+    ? "ไม่มีลิงก์สำหรับเปิดไฟล์นี้บนเว็บ ลองเปิดพรีวิวใน PikPak Desktop เพื่ออัปเดตลิงก์"
+    : expired
+      ? `ลิงก์วิดีโอนี้หมดอายุแล้ว (${formatStudioDate(activeVariant.expiresAt)}) กรุณาเปิดคลิปใน PikPak Desktop เพื่ออัปเดตลิงก์ใหม่`
+      : activeVariant?.codec === "hevc"
+        ? "เบราว์เซอร์นี้ไม่รองรับการถอดรหัส HEVC (H.265) หรือลิงก์อาจหมดอายุ ลองสลับไปที่ \"ต้นฉบับ\""
+        : transportStream
+          ? "เปิดวิดีโอคุณภาพนี้ไม่ได้ เบราว์เซอร์อาจไม่รองรับไฟล์ TS หรือลิงก์อาจหมดอายุ"
+          : "เปิดวิดีโอคุณภาพนี้ไม่ได้ ลิงก์อาจหมดอายุหรือเบราว์เซอร์ไม่รองรับไฟล์";
 
   return (
     <VideoPlayer
@@ -1347,7 +1326,8 @@ function MediaContent({
       poster={item.thumbnail}
       headerActions={fileInfo && <CopyJsonButton data={fileInfo} />}
       onClose={onClose}
-      variants={result.variants}
+      loading={isLoadingVideo}
+      variants={videoVariants}
       selected={selected}
       onSelectQuality={setSelectedQuality}
       siblings={siblings}
@@ -1361,7 +1341,7 @@ function MediaContent({
       hasNext={hasNext}
       onPrev={onPrev}
       onNext={onNext}
-      failed={failed || expired}
+      failed={noVideoLinks || failed || expired}
       errorMessage={errorMessage}
       errorAction={
         <button type="button" onClick={onReload}
