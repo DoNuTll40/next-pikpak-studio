@@ -13,7 +13,7 @@ export async function POST(request) {
   }
 
   try {
-    const auth = await requireDesktopSession();
+    const auth = await requireDesktopSession(request);
     if (!auth) {
       return desktopReply(401, { error: "sign_in_required" });
     }

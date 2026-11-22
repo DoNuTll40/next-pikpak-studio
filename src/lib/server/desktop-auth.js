@@ -1,5 +1,6 @@
 import "server-only";
 import { readOAuthSession } from "./auth";
+import { verifyDesktopBearerToken } from "./desktop-tokens";
 
 export const desktopHeaders = { "Cache-Control": "private, no-store" };
 export const maxDesktopBodyBytes = 512 * 1024;
@@ -9,22 +10,55 @@ export function desktopReply(status, body) {
   return Response.json(body, { status, headers: desktopHeaders });
 }
 
+export function extractBearerToken(request) {
+  const header = request.headers.get("authorization");
+  if (!header) return null;
+  const match = /^Bearer\s+(\S+)$/i.exec(header.trim());
+  return match ? match[1] : null;
+}
+
 export function isTrustedDesktopOrigin(request, { allowMissing = false } = {}) {
   const expected = new URL(process.env.BETTER_AUTH_URL ?? request.url).origin;
   const origin = request.headers.get("origin");
   if (!origin) {
-    if (!allowMissing) return false;
-    const fetchSite = request.headers.get("sec-fetch-site");
-    return !fetchSite || fetchSite === "same-origin" || fetchSite === "none";
+    if (allowMissing || extractBearerToken(request)) {
+      const fetchSite = request.headers.get("sec-fetch-site");
+      return !fetchSite || fetchSite === "same-origin" || fetchSite === "none";
+    }
+    return false;
   }
   return origin === expected;
 }
 
-export async function requireDesktopSession() {
+export async function requireDesktopSession(request) {
+  const bearer = request ? extractBearerToken(request) : null;
+  if (bearer) {
+    const verified = await verifyDesktopBearerToken(bearer);
+    if (!verified || !uuidPattern.test(verified.userId)) return null;
+    return {
+      userId: verified.userId,
+      user: verified.user,
+      authMethod: "bearer",
+      tokenId: verified.tokenId,
+    };
+  }
+
   const session = await readOAuthSession();
   const userId = session?.user?.studioOwnerId;
   if (typeof userId !== "string" || !uuidPattern.test(userId)) return null;
-  return { userId, session };
+  const rawEmail = session.user.email;
+  const email = typeof rawEmail === "string" && !rawEmail.endsWith(".invalid") ? rawEmail : null;
+  return {
+    userId,
+    user: {
+      id: session.user.id,
+      name: session.user.name ?? "",
+      email,
+      image: session.user.image ?? null,
+    },
+    authMethod: "cookie",
+    tokenId: null,
+  };
 }
 
 export async function readDesktopJsonBody(request, maxBytes = maxDesktopBodyBytes) {

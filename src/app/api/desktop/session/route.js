@@ -11,24 +11,15 @@ export async function GET(request) {
   }
 
   try {
-    const auth = await requireDesktopSession();
+    const auth = await requireDesktopSession(request);
     if (!auth) {
       return desktopReply(401, { authenticated: false, error: "sign_in_required" });
     }
 
-    const { userId, session } = auth;
-    const rawEmail = session.user.email;
-    const email = typeof rawEmail === "string" && !rawEmail.endsWith(".invalid") ? rawEmail : null;
-
     return desktopReply(200, {
       authenticated: true,
-      accountId: userId,
-      user: {
-        id: session.user.id,
-        name: session.user.name ?? "",
-        email,
-        image: session.user.image ?? null,
-      },
+      accountId: auth.userId,
+      user: auth.user,
     });
   } catch (error) {
     console.error("Desktop session check failed", desktopErrorCode(error));

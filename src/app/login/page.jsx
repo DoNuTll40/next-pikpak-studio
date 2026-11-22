@@ -6,7 +6,10 @@ import { LoginCard } from "./LoginCard";
 
 async function LoginView({ searchParams }) {
   await connection();
-  const { invalid, oauth } = await searchParams;
+  const { invalid, oauth, next } = await searchParams;
+  const safeNext = typeof next === "string" && next.startsWith("/") && !next.startsWith("//")
+    ? next
+    : "";
   const message = invalid === "1"
     ? "คีย์เข้าคลังไม่ถูกต้อง"
     : oauth === "failed"
@@ -25,6 +28,7 @@ async function LoginView({ searchParams }) {
     <LoginCard
       providers={availableProviders()}
       hasAccessKey={Boolean(process.env.STUDIO_ACCESS_KEY)}
+      nextPath={safeNext}
       errorSlot={errorSlot}
     />
   );

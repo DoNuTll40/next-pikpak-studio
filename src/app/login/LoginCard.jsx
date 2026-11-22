@@ -16,7 +16,7 @@ const PROVIDERS = [
   { id: "facebook", name: "Facebook", Icon: FacebookMark },
 ];
 
-export function LoginCard({ providers, hasAccessKey, errorSlot }) {
+export function LoginCard({ providers, hasAccessKey, nextPath = "", errorSlot }) {
   const [theme, setTheme] = useStudioPreference("theme", "dark", ["light"]);
   const reducedMotion = useReducedMotion();
 
@@ -62,6 +62,7 @@ export function LoginCard({ providers, hasAccessKey, errorSlot }) {
           {PROVIDERS.map(({ id, name, Icon }) => (
             <form key={id} action={signInWithProvider}>
               <input type="hidden" name="provider" value={id} />
+              {nextPath && <input type="hidden" name="next" value={nextPath} />}
               <ProviderButton name={name} Icon={Icon} available={providers.includes(id)} />
             </form>
           ))}
