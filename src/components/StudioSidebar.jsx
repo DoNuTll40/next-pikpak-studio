@@ -5,14 +5,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Suspense } from "react";
 import { Download } from "lucide-react";
+import { DESKTOP_RELEASE } from "@/lib/desktop-release";
 import { studioSections } from "@/lib/studio-sections";
 import { FolderIcon } from "./FolderIcon";
 import { SignOutForm } from "./SignOutForm";
-
-const DESKTOP_VERSION = "0.1.0";
-const DESKTOP_FILENAME = "PikPak Studio_0.1.0_x64-setup.exe";
-const DESKTOP_DOWNLOAD_URL = process.env.NEXT_PUBLIC_DESKTOP_DOWNLOAD_URL ||
-  `/app/release/${encodeURIComponent(DESKTOP_FILENAME)}`;
 
 export function StudioSidebar({ account, toggle }) {
   return (
@@ -42,7 +38,7 @@ export function StudioSidebar({ account, toggle }) {
 }
 
 function DesktopAppCard() {
-  const isExternal = /^https?:\/\//i.test(DESKTOP_DOWNLOAD_URL);
+  const isExternal = /^https?:\/\//i.test(DESKTOP_RELEASE.downloadUrl);
   return (
     <section aria-label="ดาวน์โหลดแอป Desktop"
       className="rounded-2xl border border-border bg-gradient-to-br from-accent/[0.08] via-panel to-panel p-3 shadow-xs">
@@ -56,22 +52,29 @@ function DesktopAppCard() {
           className="size-9 shrink-0 rounded-[10px] shadow-xs"
         />
         <div className="min-w-0">
-          <p className="truncate text-xs leading-tight font-semibold text-foreground">PikPak Desktop</p>
-          <p className="mt-0.5 truncate text-[11px] leading-tight text-muted">Windows · v{DESKTOP_VERSION}</p>
+          <div className="flex items-center gap-1.5">
+            <p className="truncate text-xs leading-tight font-semibold text-foreground">PikPak Desktop</p>
+            <span className="shrink-0 rounded-full bg-accent/15 px-1.5 py-0.5 text-[10px] leading-none font-medium text-accent-text">
+              {DESKTOP_RELEASE.tag}
+            </span>
+          </div>
+          <p className="mt-0.5 truncate text-[11px] leading-tight text-muted">
+            Windows x64 · {DESKTOP_RELEASE.sizeLabel}
+          </p>
         </div>
       </div>
       <p className="mt-2 text-[11.5px] leading-relaxed text-muted">
-        ซิงก์คลังอัตโนมัติและดาวน์โหลดวิดีโอเต็มสปีด
+        ซิงก์คลังอัตโนมัติ รีเฟรชลิงก์ที่หมดอายุ และดาวน์โหลดวิดีโอเต็มสปีด
       </p>
       <a
-        href={DESKTOP_DOWNLOAD_URL}
-        download={isExternal ? undefined : DESKTOP_FILENAME}
+        href={DESKTOP_RELEASE.downloadUrl}
+        download={isExternal ? undefined : DESKTOP_RELEASE.filename}
         target={isExternal ? "_blank" : undefined}
         rel={isExternal ? "noopener noreferrer" : undefined}
         className="mt-2.5 flex h-8 w-full items-center justify-center gap-1.5 rounded-lg bg-accent px-2.5 text-xs font-medium text-white shadow-xs hover:bg-accent/90"
       >
         <Download size={13} className="shrink-0" aria-hidden="true" />
-        <span className="truncate">ดาวน์โหลดแอป</span>
+        <span className="truncate">ดาวน์โหลด {DESKTOP_RELEASE.tag}</span>
       </a>
     </section>
   );

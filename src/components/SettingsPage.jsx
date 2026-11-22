@@ -1,6 +1,8 @@
 "use client";
 
-import { Grid2X2, List, Moon, Sun } from "lucide-react";
+import Image from "next/image";
+import { CheckCircle2, Download, ExternalLink, Grid2X2, List, Moon, Sun } from "lucide-react";
+import { DESKTOP_RELEASE } from "@/lib/desktop-release";
 import { control, subtitle, surface } from "@/lib/ui-styles";
 import { SegmentedControl } from "./SegmentedControl";
 import { Select } from "./Select";
@@ -16,6 +18,7 @@ export function SettingsPage({ title, children }) {
     theme, setTheme, view, setView, density, setDensity, defaultSort, setDefaultSort,
     videoQuality, setVideoQuality, resetPreferences,
   } = useStudioPreferences();
+  const isExternal = /^https?:\/\//i.test(DESKTOP_RELEASE.downloadUrl);
 
   return (
     <div className="relative isolate">
@@ -53,6 +56,63 @@ export function SettingsPage({ title, children }) {
               <h2 id="video-preferences" className={subtitle}>การเล่นวิดีโอ</h2>
               <SelectPreference label="ความละเอียดเริ่มต้น" value={videoQuality} onChange={setVideoQuality}
                 options={[["auto", "ค่าเริ่มต้นของไฟล์"], ["720", "เน้น 720p"], ["1080", "เน้น 1080p"], ["original", "ต้นฉบับ"]]} />
+            </section>
+            <section className="px-4 pt-4 pb-4 sm:px-5" aria-labelledby="desktop-release-info">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <Image
+                    src="/desktop-app-icon.png"
+                    alt="ไอคอนแอป PikPak Studio Desktop"
+                    width={42}
+                    height={42}
+                    unoptimized
+                    className="size-10.5 shrink-0 rounded-xl shadow-xs"
+                  />
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h2 id="desktop-release-info" className={subtitle}>PikPak Studio Desktop</h2>
+                      <span className="rounded-full bg-accent/15 px-2 py-0.5 text-xs font-medium text-accent-text">
+                        {DESKTOP_RELEASE.tag}
+                      </span>
+                    </div>
+                    <p className="mt-0.5 text-xs text-muted">
+                      {DESKTOP_RELEASE.platform} · {DESKTOP_RELEASE.sizeLabel} · อัปเดต {DESKTOP_RELEASE.releasedAt}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <a
+                    href={DESKTOP_RELEASE.downloadUrl}
+                    download={isExternal ? undefined : DESKTOP_RELEASE.filename}
+                    target={isExternal ? "_blank" : undefined}
+                    rel={isExternal ? "noopener noreferrer" : undefined}
+                    className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-accent px-3.5 text-xs font-medium text-white shadow-xs hover:bg-accent/90"
+                  >
+                    <Download size={14} className="shrink-0" aria-hidden="true" />
+                    <span>ดาวน์โหลดตัวติดตั้ง ({DESKTOP_RELEASE.tag})</span>
+                  </a>
+                  <a
+                    href={DESKTOP_RELEASE.githubReleaseUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`${control} inline-flex h-9 items-center gap-1.5 text-xs`}
+                  >
+                    <ExternalLink size={13} className="shrink-0" aria-hidden="true" />
+                    <span>GitHub Release</span>
+                  </a>
+                </div>
+              </div>
+              <ul className="mt-3 space-y-1.5 text-xs text-muted">
+                {DESKTOP_RELEASE.highlights.map((item) => (
+                  <li key={item} className="flex items-start gap-2">
+                    <CheckCircle2 size={14} className="mt-0.5 shrink-0 text-accent-text" aria-hidden="true" />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-2.5 truncate font-mono text-[11px] text-muted/80" title={DESKTOP_RELEASE.sha256}>
+                SHA-256: {DESKTOP_RELEASE.sha256}
+              </p>
             </section>
           </div>
           <div className="mt-3 flex justify-end">
