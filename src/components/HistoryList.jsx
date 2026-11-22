@@ -37,7 +37,6 @@ export function HistoryList({ history }) {
       </ul>
       {preview && (
         <MediaDialog
-          key={preview.id}
           item={preview}
           items={history.filter(entry => entry.kind === "image" || entry.kind === "video")}
           onSelectItem={setPreview}

@@ -10,7 +10,10 @@ export async function GET(_request, { params }) {
   if (!item) return Response.json(null, { headers, status: 404 });
 
   const desktop = !item.preview && item.useDesktopCache ? await readDesktopMedia(item) : null;
-  const preview = item.preview ?? desktop?.preview ?? null;
+  let preview = item.preview ?? desktop?.preview ?? null;
+  if (!preview && item.kind === "image" && item.thumbnail) {
+    preview = { kind: "image", url: item.thumbnail, isThumbnailFallback: true };
+  }
   const fileInfo = desktop?.fileInfo ?? item.fileInfo ?? null;
   if (!preview && !fileInfo) return Response.json(null, { headers, status: 404 });
 

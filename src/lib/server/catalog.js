@@ -54,6 +54,7 @@ END`;
 export async function readCatalogMediaItem(id) {
   return readStudio(async (query, useDesktopCache) => (await query(`
     SELECT item.file_id AS id, item.name, ${mediaKind} AS kind,
+      item.thumbnail_url AS thumbnail,
       item.file_info -> 'preview' AS preview,
       item.file_info AS "fileInfo",
       $3::boolean AS "useDesktopCache"

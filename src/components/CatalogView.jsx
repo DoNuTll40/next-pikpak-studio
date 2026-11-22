@@ -258,7 +258,6 @@ export function CatalogView({ path, folders, items }) {
       )}
       {preview && (
         <MediaDialog
-          key={preview.id}
           item={preview}
           items={mediaList}
           onSelectItem={setPreview}
