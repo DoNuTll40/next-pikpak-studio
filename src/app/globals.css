@@ -63,6 +63,13 @@
   @apply rounded-xl border border-border bg-panel p-1 text-foreground shadow-lg;
 }
 
+html,
+body {
+  touch-action: manipulation;
+  -webkit-text-size-adjust: 100%;
+  overscroll-behavior-y: none;
+}
+
 a, img {
   -webkit-user-drag: none;
 }

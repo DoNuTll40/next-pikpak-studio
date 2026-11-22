@@ -11,12 +11,41 @@ import "@fontsource-variable/noto-sans-bengali";
 import "@fontsource-variable/noto-sans-khmer";
 import "@fontsource-variable/noto-sans-lao";
 import "@fontsource-variable/noto-sans-myanmar";
+import { PwaRegistrar } from "@/components/PwaRegistrar";
 import "./globals.css";
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: dark)", color: "#111522" },
+    { media: "(prefers-color-scheme: light)", color: "#f3f6fc" },
+  ],
+};
+
 export const metadata = {
+  applicationName: "PikPak Studio",
   title: "PikPak Studio",
   description: "คลังส่วนตัวของ PikPak Studio",
-  icons: { icon: "/studio.svg" },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "PikPak Studio",
+  },
+  formatDetection: {
+    telephone: false,
+  },
+  icons: {
+    icon: [
+      { url: "/studio.svg", type: "image/svg+xml" },
+      { url: "/icon-192x192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512x512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+  },
 };
 
 export default function RootLayout({ children }) {
@@ -37,6 +66,7 @@ export default function RootLayout({ children }) {
         [&_button]:cursor-pointer [&_select]:cursor-pointer [&_summary]:cursor-pointer
         motion-safe:[&_a]:transition-colors motion-safe:[&_button]:transition-colors">
         {children}
+        <PwaRegistrar />
       </body>
     </html>
   );
