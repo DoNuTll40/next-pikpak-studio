@@ -68,7 +68,7 @@ export async function readCatalog(folderId) {
     const { rows: folders } = await query(`
       SELECT item.file_id AS id, item.parent_file_id AS parent, item.name, item.kind,
         scan.status, scan.path AS "scanPath", children.count, item.share_root AS "shareRoot",
-        coalesce(item.thumbnail_url, preview.thumbnail_url) AS thumbnail
+        coalesce(item.thumbnail_url, preview.thumbnail_url, deep_preview.thumbnail_url) AS thumbnail
       FROM studio.catalog_items item
       LEFT JOIN LATERAL (
         SELECT status, path FROM studio.scan_folders
@@ -81,9 +81,17 @@ export async function readCatalog(folderId) {
       ) children
       LEFT JOIN LATERAL (
         SELECT thumbnail_url FROM studio.catalog_items
-        WHERE user_id = $1 AND parent_file_id = item.file_id AND kind = 'file' AND thumbnail_url IS NOT NULL
-        ORDER BY name, file_id LIMIT 1
+        WHERE user_id = $1 AND parent_file_id = item.file_id AND thumbnail_url IS NOT NULL
+        ORDER BY (kind = 'file') DESC, name, file_id LIMIT 1
       ) preview ON true
+      LEFT JOIN LATERAL (
+        SELECT g.thumbnail_url
+        FROM studio.catalog_items sub
+        JOIN studio.catalog_items g
+          ON g.user_id = $1 AND g.parent_file_id = sub.file_id AND g.thumbnail_url IS NOT NULL
+        WHERE sub.user_id = $1 AND sub.parent_file_id = item.file_id AND sub.kind = 'folder'
+        ORDER BY (g.kind = 'file') DESC, sub.name, g.name, g.file_id LIMIT 1
+      ) deep_preview ON item.thumbnail_url IS NULL AND preview.thumbnail_url IS NULL
       WHERE item.user_id = $1 AND item.kind = 'folder'
       ORDER BY item.name, item.file_id
     `);
@@ -113,9 +121,9 @@ export async function readCatalog(folderId) {
     const { rows: previews } = thumbnails?.ids.length && visibleFolders.length ? await query(`
       SELECT DISTINCT ON (item.parent_file_id) item.parent_file_id AS folder, item.file_id AS id
       FROM studio.catalog_items item
-      WHERE item.user_id = $1 AND item.kind = 'file'
+      WHERE item.user_id = $1
         AND item.parent_file_id = ANY($2::text[]) AND item.file_id = ANY($3::text[])
-      ORDER BY item.parent_file_id, item.name, item.file_id
+      ORDER BY item.parent_file_id, (item.kind = 'file') DESC, item.name, item.file_id
     `, [visibleFolders.map(folder => folder.id), thumbnails.ids]) : { rows: [] };
 
     return { folders, files, previews, thumbnails, useDesktopCache };
