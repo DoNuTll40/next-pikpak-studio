@@ -150,6 +150,7 @@ export async function readHistory() {
   const { items, useDesktopCache } = await readStudio(async (query, useDesktopCache) => ({
     items: (await query(`
     SELECT item.file_id AS id, item.name, ${mediaKind} AS kind, parent.file_id AS "parentId",
+      item.thumbnail_url AS thumbnail,
       (extract(epoch FROM history.viewed_at) * 1000)::double precision AS "viewedAt"
     FROM studio.watch_history history
     JOIN studio.catalog_items item ON item.user_id = $1 AND item.file_id = history.file_id
@@ -164,7 +165,7 @@ export async function readHistory() {
   const thumbnails = useDesktopCache ? await openDesktopThumbnails() : null;
   if (thumbnails) {
     await Promise.all(items.map(async item => {
-      item.thumbnail = await thumbnails.read(item.id);
+      item.thumbnail ??= await thumbnails.read(item.id);
     }));
   }
   return items;

@@ -26,7 +26,7 @@ function normalize(raw, field) {
     mime_type: mime,
     size_bytes: /^\d{1,19}$/.test(size) && BigInt(size) <= 9223372036854775807n ? size : null,
     source_modified_at: Number.isFinite(modified) ? new Date(modified).toISOString() : null,
-    thumbnail_url: thumbnailUrl(raw.thumbnail_link ?? raw.thumbnail_url),
+    thumbnail_url: thumbnailUrl(raw.thumbnail_link ?? raw.thumbnail_url ?? raw.params?.small_thumbnail),
     share_root: kind === "folder" && raw.share_root === true,
   };
   const metadata = {
