@@ -1,0 +1,11 @@
+export const surface = "rounded-[18px] border border-border bg-panel";
+export const empty = "grid flex-1 content-center justify-items-center gap-3 px-4 py-8 text-center text-muted";
+export const field = "min-h-11 rounded-xl border border-border bg-field";
+export const control = `${field} inline-flex items-center justify-center gap-2 px-3 text-sm hover:border-accent-text`;
+export const iconButton = `${field} inline-flex min-w-11 items-center justify-center hover:border-accent-text`;
+export const segmented = `${field} inline-flex gap-0.5 p-[3px]`;
+export const segment = "inline-flex min-h-9 min-w-[42px] items-center justify-center gap-1.5 rounded-lg px-2 text-muted";
+export const title = "wrap-anywhere text-[clamp(1.6rem,3vw,2.15rem)] font-[650] tracking-tight";
+export const subtitle = "text-[1.05rem] font-[650]";
+export const brandIcon = "grid size-[39px] shrink-0 place-items-center rounded-xl border border-border bg-panel [&>svg]:w-6";
+export const thumbnailPreview = "absolute inset-0 size-full object-contain";

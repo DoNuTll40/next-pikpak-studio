@@ -9,11 +9,42 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@fontsource-variable/noto-sans": "^5.3.0",
+    "@fontsource-variable/noto-sans-arabic": "^5.3.0",
+    "@fontsource-variable/noto-sans-bengali": "^5.3.0",
+    "@fontsource-variable/noto-sans-devanagari": "^5.3.0",
+    "@fontsource-variable/noto-sans-hebrew": "^5.3.0",
+    "@fontsource-variable/noto-sans-jp": "^5.3.1",
+    "@fontsource-variable/noto-sans-khmer": "^5.3.0",
+    "@fontsource-variable/noto-sans-kr": "^5.3.1",
+    "@fontsource-variable/noto-sans-lao": "^5.3.0",
+    "@fontsource-variable/noto-sans-myanmar": "^5.3.0",
+    "@fontsource-variable/noto-sans-sc": "^5.3.1",
+    "@fontsource-variable/noto-sans-tc": "^5.3.1",
+    "@fontsource-variable/noto-sans-thai-looped": "^5.3.0",
+    "@gsap/react": "^2.1.2",
+    "better-auth": "^1.7.27",
+    "framer-motion": "^14.14.0",
+    "gsap": "^3.15.1",
+    "hls.js": "^1.7.4",
+    "lucide-react": "^1.77.0",
+    "mpegts.js": "^1.8.2",
     "next": "16.4.6",
+    "pg": "^8.23.1",
+    "prismjs": "^1.30.0",
+    "prop-types": "^15.8.1",
     "react": "19.3.0",
-    "react-dom": "19.3.0"
+    "react-dom": "19.3.0",
+    "react-splitter-layout": "^4.0.0",
+    "server-only": "^0.0.1"
+  },
+  "overrides": {
+    "react-splitter-layout": {
+      "react": "$react"
+    }
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.3",
     "@tailwindcss/turbopack": "4.3.3",
     "eslint": "^9",
     "eslint-config-next": "16.4.6",
