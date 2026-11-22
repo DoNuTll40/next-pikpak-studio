@@ -19,9 +19,9 @@ import { StudioPage } from "./StudioContent";
 import { StudioPageHeader } from "./StudioPageHeader";
 
 const cardDensities = {
-  compact: "grid-view:gap-2 md:grid-view:grid-cols-[repeat(auto-fill,minmax(min(100%,190px),1fr))] list-view:gap-1",
-  standard: "grid-view:gap-2.5 md:grid-view:grid-cols-[repeat(auto-fill,minmax(min(100%,240px),1fr))] md:grid-view:gap-4 list-view:gap-2",
-  spacious: "grid-view:gap-4 md:grid-view:grid-cols-[repeat(auto-fill,minmax(min(100%,290px),1fr))] md:grid-view:gap-5 list-view:gap-4",
+  compact: "grid-view:gap-2 desktop:grid-view:grid-cols-[repeat(auto-fill,minmax(min(100%,190px),1fr))] list-view:gap-1",
+  standard: "grid-view:gap-2.5 desktop:grid-view:grid-cols-[repeat(auto-fill,minmax(min(100%,240px),1fr))] desktop:grid-view:gap-4 list-view:gap-2",
+  spacious: "grid-view:gap-4 desktop:grid-view:grid-cols-[repeat(auto-fill,minmax(min(100%,290px),1fr))] desktop:grid-view:gap-5 list-view:gap-4",
 };
 const sectionHeading = "my-1 flex items-center justify-between gap-0";
 
@@ -43,8 +43,8 @@ export function CatalogView({ path, folders, items }) {
     !located.some(item => item.kind === "folder" || item.kind === "video");
 
   const cards = isPhotoFolder
-    ? `grid max-md:grid-view:grid-cols-3 max-md:grid-view:gap-0.5 max-md:grid-view:-mx-4 md:grid-view:grid-cols-2 list-view:grid-cols-1 py-2 ${cardDensities[density]}`
-    : `grid grid-view:grid-cols-2 list-view:grid-cols-1 py-2 ${cardDensities[density]}`;
+    ? `grid mobile:grid-view:grid-cols-3 mobile-landscape:grid-view:grid-cols-5 mobile:grid-view:gap-0.5 mobile:grid-view:-mx-4 desktop:grid-view:grid-cols-2 list-view:grid-cols-1 py-2 ${cardDensities[density]}`
+    : `grid grid-view:grid-cols-2 mobile-landscape:grid-view:grid-cols-3 list-view:grid-cols-1 py-2 ${cardDensities[density]}`;
 
   // Playable media items in the current view so the mobile viewer can swipe prev/next
   const mediaList = located.filter(item => item.kind === "image" || item.kind === "video");
@@ -76,8 +76,8 @@ export function CatalogView({ path, folders, items }) {
     <>
       <StudioPage header={
         <>
-          {/* Mobile-Only Compact Header (< md) */}
-          <header className="sticky top-0 z-30 border-b border-border/60 bg-background/95 px-3 pt-2.5 pb-2.5 backdrop-blur-md md:hidden">
+          {/* Mobile-Only Compact Header (portrait & landscape phones) */}
+          <header className="sticky top-0 z-30 border-b border-border/60 bg-background/95 px-3 pt-2.5 pb-2 desktop:hidden">
             <div className="flex items-center gap-1.5">
               {backHref && (
                 <Link
@@ -109,11 +109,10 @@ export function CatalogView({ path, folders, items }) {
                   }
                   setMobileSearchOpen(prev => !prev);
                 }}
-                className={`grid size-9 shrink-0 place-items-center rounded-xl border transition-colors ${
-                  mobileSearchOpen || query
+                className={`grid size-9 shrink-0 place-items-center rounded-xl border transition-colors ${mobileSearchOpen || query
                     ? "border-accent/60 bg-accent/15 text-accent-text"
                     : "border-transparent text-muted hover:bg-panel hover:text-foreground"
-                }`}
+                  }`}
               >
                 <Search size={18} aria-hidden="true" />
               </button>
@@ -187,8 +186,8 @@ export function CatalogView({ path, folders, items }) {
             </div>
           </header>
 
-          {/* Desktop Header (md and above — unchanged) */}
-          <div className="hidden md:block">
+          {/* Desktop Header (desktop breakpoint — unchanged) */}
+          <div className="hidden desktop:block">
             <StudioPageHeader
               heading={current?.name ?? "คลังของฉัน"}
               headingClass={current ? catalogFontClass(current.name) : undefined}
@@ -199,23 +198,23 @@ export function CatalogView({ path, folders, items }) {
                   onClick={() => setTreeOpen(true)}><ListTree size={18} /> โครงสร้างโฟลเดอร์</button>
               }
             >
-              <div className="mt-[18px] mb-2 flex flex-wrap items-stretch gap-2 md:mt-5 md:mb-3 md:flex-nowrap md:gap-2.5">
-                <label className={`${field} flex flex-1 basis-full items-center gap-2.5 px-3 text-muted focus-within:border-accent-text md:basis-auto [&>svg]:shrink-0`}><Search size={18} /><input className="w-full min-w-0 text-foreground outline-none!" type="search" aria-label="ค้นหารายการในโฟลเดอร์นี้"
+              <div className="mt-[18px] mb-2 flex flex-wrap items-stretch gap-2 desktop:mt-5 desktop:mb-3 desktop:flex-nowrap desktop:gap-2.5">
+                <label className={`${field} flex flex-1 basis-full items-center gap-2.5 px-3 text-muted focus-within:border-accent-text desktop:basis-auto [&>svg]:shrink-0`}><Search size={18} /><input className="w-full min-w-0 text-foreground outline-none!" type="search" aria-label="ค้นหารายการในโฟลเดอร์นี้"
                   placeholder="ค้นหาในหน้านี้" value={query} onChange={event => setQuery(event.target.value)} /></label>
                 <Select label="กรองตามข้อมูลไฟล์" value={filter} onChange={setFilter}
                   options={[["all", "ทั้งหมด"], ["known", "เคยเปิดใน Desktop"], ["unknown", "ยังไม่มีประวัติเปิด"]]} />
                 <Select label="เรียงรายการ" value={sort} onChange={setSort}
                   options={[["asc", "ชื่อ A–Z"], ["desc", "ชื่อ Z–A"]]} />
-                <SegmentedControl label="รูปแบบรายการ" value={view} onChange={setView} iconOnly className="ml-auto md:ml-0"
+                <SegmentedControl label="รูปแบบรายการ" value={view} onChange={setView} iconOnly className="ml-auto desktop:ml-0"
                   options={[["grid", "ตาราง", Grid2X2], ["list", "รายการ", List]]} />
               </div>
             </StudioPageHeader>
           </div>
         </>
       }>
-        <section className={!located.length && !unresolved.length ? "mt-2 md:mt-4 flex flex-1 flex-col" : "mt-1 md:mt-4"}
+        <section className={!located.length && !unresolved.length ? "mt-2 desktop:mt-4 flex flex-1 flex-col" : "mt-1 desktop:mt-4"}
           aria-labelledby="items-heading">
-          <div className={`${sectionHeading} hidden md:flex`}>
+          <div className={`${sectionHeading} hidden desktop:flex`}>
             <h2 className={subtitle} id="items-heading">{current ? "รายการ" : "แชร์หลัก"}</h2>
             <span className="text-xs text-muted" aria-live="polite">{located.length} รายการ</span>
           </div>
@@ -247,7 +246,7 @@ export function CatalogView({ path, folders, items }) {
           type="button"
           aria-label="เลื่อนกลับขึ้นด้านบนสุด"
           onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-          className="fixed right-4 bottom-[calc(70px+env(safe-area-inset-bottom))] z-20 grid size-10 place-items-center rounded-full border border-border bg-panel/95 text-foreground shadow-lg backdrop-blur-md active:scale-90 md:hidden"
+          className="fixed right-4 bottom-[calc(70px+env(safe-area-inset-bottom))] mobile-landscape:bottom-[calc(54px+env(safe-area-inset-bottom))] z-20 grid size-10 place-items-center rounded-full border border-border bg-panel/95 text-foreground shadow-lg backdrop-blur-md active:scale-90 desktop:hidden"
         >
           <ArrowUp size={18} aria-hidden="true" />
         </button>

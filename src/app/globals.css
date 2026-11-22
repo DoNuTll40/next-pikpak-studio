@@ -4,6 +4,22 @@
 @custom-variant grid-view (&:where(:root:not([data-view="list"]) *));
 @custom-variant light-theme (&:where([data-theme="light"] *));
 @custom-variant dark-theme (&:where(:root:not([data-theme="light"]) *));
+/* Mobile covers portrait phones (< 768px width) AND landscape phones (height <= 500px, e.g. iPhone 16 852x393) */
+@custom-variant mobile {
+  @media (max-width: 767px), (max-height: 500px) {
+    @slot;
+  }
+}
+@custom-variant desktop {
+  @media (min-width: 768px) and (min-height: 501px) {
+    @slot;
+  }
+}
+@custom-variant mobile-landscape {
+  @media (orientation: landscape) and (max-height: 500px) {
+    @slot;
+  }
+}
 
 @theme inline {
   --color-background: var(--background);
@@ -103,7 +119,7 @@ a, img {
   opacity: 1;
 }
 
-@media (width >= 48rem) {
+@media (min-width: 768px) and (min-height: 501px) {
   .studio-split[data-sidebar="closed"] #main-content {
     max-width: none;
   }
@@ -139,7 +155,7 @@ a, img {
   }
 }
 
-@media (width < 48rem) {
+@media (max-width: 767px), (max-height: 500px) {
   .studio-split > .studio-panes {
     display: block;
   }

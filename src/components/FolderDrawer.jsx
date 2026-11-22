@@ -21,13 +21,13 @@ export function FolderDrawer({ folders, path, onClose }) {
       ref={dialog}
       id="catalog-tree"
       aria-labelledby="catalog-tree-title"
-      className="fixed inset-0 m-0 size-full max-h-none max-w-none items-end justify-end overflow-hidden bg-transparent text-foreground backdrop:bg-black/45 open:flex md:items-stretch md:p-3"
+      className="fixed inset-0 m-0 size-full max-h-none max-w-none items-end justify-end overflow-hidden bg-transparent text-foreground backdrop:bg-black/45 open:flex desktop:items-stretch desktop:p-3"
       onClose={onClose}
       onClick={event => {
         if (event.target === event.currentTarget) event.currentTarget.close();
       }}
     >
-      <div className={`${surface} flex max-h-[70dvh] w-full flex-col overflow-hidden rounded-b-none p-3 pb-[calc(12px+env(safe-area-inset-bottom))] shadow-[0_12px_45px_#0005] motion-safe:animate-sheet-in md:max-h-none md:w-[320px] md:rounded-2xl md:p-3 motion-safe:md:animate-drawer-in`}>
+      <div className={`${surface} flex max-h-[70dvh] mobile-landscape:max-h-[82dvh] w-full flex-col overflow-hidden rounded-b-none p-3 pb-[calc(12px+env(safe-area-inset-bottom))] shadow-[0_12px_45px_#0005] motion-safe:animate-sheet-in desktop:max-h-none desktop:w-[320px] desktop:rounded-2xl desktop:p-3 motion-safe:desktop:animate-drawer-in`}>
         <header className="mb-1.5 flex shrink-0 items-center justify-between gap-2 px-1.5">
           <h2 className="text-[0.95rem] font-semibold" id="catalog-tree-title">โครงสร้างโฟลเดอร์</h2>
           <form method="dialog">

@@ -1014,7 +1014,7 @@ export function VideoPlayer({
           ? "relative flex w-full items-center gap-2.5 bg-panel px-2.5 py-2 text-foreground"
           : fullscreen
             ? "size-full bg-[#080d18]"
-            : "flex size-full flex-col bg-background text-foreground md:block md:size-auto md:bg-[#080d18]"
+            : "flex size-full flex-col bg-background text-foreground mobile-landscape:bg-[#080d18] desktop:block desktop:size-auto desktop:bg-[#080d18]"
       }
     >
       <div
@@ -1026,7 +1026,9 @@ export function VideoPlayer({
           minimized
             ? "relative h-12 w-21 shrink-0 overflow-hidden rounded-lg bg-[#080d18]"
             : `group/player relative flex shrink-0 items-center justify-center overflow-hidden bg-[#080d18] select-none touch-manipulation focus:outline-none! ${
-                fullscreen ? "size-full" : "aspect-video max-h-dvh sm:max-h-[calc(100dvh-32px)] w-full"
+                fullscreen
+                  ? "size-full"
+                  : "aspect-video max-h-dvh w-full mobile-landscape:aspect-auto mobile-landscape:size-full desktop:max-h-[calc(100dvh-32px)]"
               }`
         }
         onKeyDown={handleKeyDown}
@@ -1154,8 +1156,8 @@ export function VideoPlayer({
             scheduleHide();
           }}
         >
-          {/* Mobile Header (matches mockup: [v] [合集1.mp4] ... [Settings Gear]) */}
-          <div className="flex w-full items-center justify-between gap-2 md:hidden">
+          {/* Mobile Header (matches mockup: [v] [合集1.mp4] ... [Settings Gear]) — works in BOTH portrait & landscape phones */}
+          <div className="flex w-full items-center justify-between gap-2 desktop:hidden">
             <div className="flex min-w-0 flex-1 items-center gap-1">
               {!fullscreen && (onMinimize || onClose) && (
                 <button
@@ -1184,15 +1186,15 @@ export function VideoPlayer({
             </button>
           </div>
 
-          {/* Desktop Header (md and above — unchanged) */}
+          {/* Desktop Header (desktop breakpoint only — unchanged) */}
           <h2
             id="preview-title"
             title={title}
-            className={`hidden md:block min-w-0 truncate text-sm font-medium text-white drop-shadow-xs ${titleClass}`}
+            className={`hidden desktop:block min-w-0 truncate text-sm font-medium text-white drop-shadow-xs ${titleClass}`}
           >
             {title}
           </h2>
-          <div className="hidden md:flex shrink-0 items-center gap-1.5">
+          <div className="hidden desktop:flex shrink-0 items-center gap-1.5">
             {headerActions}
             {!fullscreen && onClose && (
               <button type="button" onClick={onClose} aria-label="ปิดพรีวิว" title="ปิด (Esc)" className={topCloseBtn}>
@@ -1405,7 +1407,7 @@ export function VideoPlayer({
               aria-label={playing ? "หยุดชั่วคราว" : "เล่นวิดีโอ"}
               onClick={togglePlay}
               className={`pointer-events-auto grid size-14 place-items-center rounded-full bg-accent text-white shadow-lg shadow-accent/35 ring-8 ring-white/10 backdrop-blur-sm active:scale-95 hover:bg-accent/90 ${
-                playing ? "md:hidden" : ""
+                playing ? "desktop:hidden" : ""
               }`}
             >
               {playing ? (
@@ -1448,8 +1450,8 @@ export function VideoPlayer({
             scheduleHide();
           }}
         >
-          {/* Mobile Compact Single-Line Bottom Bar (< md): matches mockup [0:05] [Seek Bar] [39:24] [Fullscreen] */}
-          <div className="flex items-center gap-2.5 md:hidden">
+          {/* Mobile Compact Single-Line Bottom Bar (portrait & landscape phones): [0:05] [Seek Bar] [39:24] [Fullscreen] */}
+          <div className="flex items-center gap-2.5 desktop:hidden">
             <span className="shrink-0 text-xs font-medium text-white/95 tabular-nums">
               {formatTime(activeTime)}
             </span>
@@ -1535,8 +1537,8 @@ export function VideoPlayer({
             </button>
           </div>
 
-          {/* Desktop Seek Bar & Control Bar (md and above — unchanged) */}
-          <div className="hidden md:block">
+          {/* Desktop Seek Bar & Control Bar (desktop only — unchanged) */}
+          <div className="hidden desktop:block">
             <div
               ref={trackRef}
               role="slider"
@@ -1781,9 +1783,9 @@ export function VideoPlayer({
         </>
       )}
 
-      {/* Mobile Watch-Page Below Video (matches mockup left: title, status "กำลังเล่น · 1080p · 1x", and 2-col sibling video cards) */}
+      {/* Mobile Watch-Page Below Video (portrait phones only — hidden in mobile landscape so video fills 100% of screen!) */}
       {!fullscreen && !minimized && (
-        <div className="min-h-0 flex-1 overflow-y-auto bg-background px-3.5 pt-3.5 pb-[max(1.25rem,env(safe-area-inset-bottom))] md:hidden">
+        <div className="min-h-0 flex-1 overflow-y-auto bg-background px-3.5 pt-3.5 pb-[max(1.25rem,env(safe-area-inset-bottom))] mobile-landscape:hidden desktop:hidden">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
               <h2 className={`line-clamp-2 text-[0.98rem] leading-snug font-semibold text-foreground ${titleClass}`} title={title}>
@@ -1851,7 +1853,7 @@ export function VideoPlayer({
               exit={{ opacity: 0 }}
               transition={{ duration: 0.16 }}
               onClick={() => setOpenMenu(null)}
-              className="fixed inset-0 z-40 bg-black/50 backdrop-blur-[2px] md:hidden"
+              className="fixed inset-0 z-40 bg-black/50 backdrop-blur-[2px] desktop:hidden"
             />
             <motion.div
               key="mobile-sheet"
@@ -1863,7 +1865,7 @@ export function VideoPlayer({
               exit={reducedMotion ? { opacity: 0 } : { y: "100%" }}
               transition={reducedMotion ? { duration: 0.1 } : { type: "spring", stiffness: 420, damping: 36 }}
               onClick={event => event.stopPropagation()}
-              className="fixed inset-x-0 bottom-0 z-50 max-h-[82dvh] overflow-y-auto rounded-t-[24px] border-t border-border bg-panel px-5 pt-3 pb-[max(1.5rem,env(safe-area-inset-bottom))] text-foreground shadow-2xl md:hidden"
+              className="fixed inset-x-0 bottom-0 z-50 mx-auto max-h-[82dvh] max-w-lg overflow-y-auto rounded-t-[24px] border-t border-border bg-panel px-5 pt-3 mobile-landscape:pt-2.5 pb-[max(1.5rem,env(safe-area-inset-bottom))] mobile-landscape:pb-[max(0.75rem,env(safe-area-inset-bottom))] text-foreground shadow-2xl desktop:hidden"
             >
               <div className="mx-auto mb-3.5 h-1 w-10 rounded-full bg-border" aria-hidden="true" />
               <h3 className="mb-4 text-base font-semibold text-foreground">ตั้งค่าการเล่น</h3>

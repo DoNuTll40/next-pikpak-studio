@@ -1,6 +1,6 @@
 export function StudioContent({ children }) {
   return (
-    <main id="main-content" className="mx-auto flex min-h-dvh w-full min-w-0 max-w-[1440px] flex-col pb-[calc(59px+env(safe-area-inset-bottom))] md:pb-0">
+    <main id="main-content" className="mx-auto flex min-h-dvh w-full min-w-0 max-w-[1440px] flex-col pb-[calc(59px+env(safe-area-inset-bottom))] mobile-landscape:pb-[calc(47px+env(safe-area-inset-bottom))] desktop:pb-0">
       {children}
     </main>
   );

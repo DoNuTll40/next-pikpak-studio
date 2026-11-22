@@ -18,9 +18,9 @@ export function CatalogItem({ item, selected, onSelect, onClear, onSelectAll, on
   const isFolder = item.kind === "folder";
   const isVideo = item.kind === "video";
   const isShortcut = item.kind === "file" && /\.url$/i.test(item.name);
-  const card = `${surface} flex min-w-0 touch-manipulation select-none flex-col p-[7px] text-start hover:border-accent-text data-[selected=true]:border-accent data-[selected=true]:bg-accent/10 data-[selected=true]:ring-1 data-[selected=true]:ring-accent/35 md:p-[9px] list-view:flex-row list-view:items-center list-view:gap-3 list-view:px-3 list-view:py-[7px] ${
+  const card = `${surface} flex min-w-0 touch-manipulation select-none flex-col p-[7px] text-start hover:border-accent-text data-[selected=true]:border-accent data-[selected=true]:bg-accent/10 data-[selected=true]:ring-1 data-[selected=true]:ring-accent/35 desktop:p-[9px] list-view:flex-row list-view:items-center list-view:gap-3 list-view:px-3 list-view:py-[7px] ${
     mobilePhotoTile
-      ? "max-md:grid-view:rounded-none max-md:grid-view:border-0 max-md:grid-view:bg-transparent max-md:grid-view:p-0"
+      ? "mobile:grid-view:rounded-none mobile:grid-view:border-0 mobile:grid-view:bg-transparent mobile:grid-view:p-0"
       : ""
   }`;
 
@@ -68,7 +68,7 @@ export function CatalogItem({ item, selected, onSelect, onClear, onSelectAll, on
   const body = (
     <>
       <span className={`relative grid aspect-video w-full place-items-center overflow-hidden rounded-[9px] text-muted [background:radial-gradient(ellipse_at_50%_30%,color-mix(in_srgb,#7998c8_32%,var(--art)),var(--art)_76%)] list-view:aspect-square list-view:w-11 list-view:shrink-0 ${
-        mobilePhotoTile ? "max-md:grid-view:aspect-square max-md:grid-view:rounded-[2px]" : ""
+        mobilePhotoTile ? "mobile:grid-view:aspect-square mobile:grid-view:rounded-[2px]" : ""
       }`}>
         {selected && (
           <span className="absolute top-2 left-2 z-10 grid size-6 place-items-center rounded-md bg-panel list-view:top-0.5 list-view:left-0.5 list-view:size-4">
@@ -89,7 +89,7 @@ export function CatalogItem({ item, selected, onSelect, onClear, onSelectAll, on
               <Icon className="max-h-[72%] w-[clamp(32px,34%,88px)] drop-shadow-[0_8px_12px_#0c122444] list-view:w-[26px]" size={38} aria-hidden="true" />
             )}
             <Thumbnail src={item.thumbnail} className="absolute inset-0 size-full scale-110 object-cover blur-[16px] brightness-[.68]" />
-            <Thumbnail src={item.thumbnail} className={`${thumbnailPreview} ${mobilePhotoTile ? "max-md:grid-view:object-cover" : ""}`} />
+            <Thumbnail src={item.thumbnail} className={`${thumbnailPreview} ${mobilePhotoTile ? "mobile:grid-view:object-cover" : ""}`} />
             {isVideo && (
               <span aria-hidden="true" className="pointer-events-none absolute inset-0 grid place-items-center">
                 <span className="grid size-11 place-items-center rounded-full bg-black/55 text-white list-view:size-6">
@@ -101,15 +101,15 @@ export function CatalogItem({ item, selected, onSelect, onClear, onSelectAll, on
         )}
       </span>
       <span className={`min-w-0 pt-[11px] pb-[5px] list-view:flex-1 list-view:px-0 list-view:py-[3px] ${
-        mobilePhotoTile ? "max-md:grid-view:hidden" : ""
+        mobilePhotoTile ? "mobile:grid-view:hidden" : ""
       }`}>
         <span className={`line-clamp-1 text-[.96rem] font-medium ${catalogFontClass(item.name) ?? ""}`} title={item.name}>
           {item.name}
         </span>
-        <span className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-[5px] text-xs text-muted md:justify-between">
+        <span className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-[5px] text-xs text-muted desktop:justify-between">
           {isFolder ? <><span>{item.count > 0 ? `${item.count} รายการ` : "โฟลเดอร์"}</span><ScanStatus status={item.status} /></> :
             <><span>{item.hasInfo ? "เคยเปิดใน Desktop" : "ยังไม่มีประวัติเปิด"}</span>
-              {isShortcut ? <span>ทางลัดเว็บ</span> : item.kind !== "file" && <span className="max-md:grid-view:hidden">เปิดพรีวิว</span>}</>}
+              {isShortcut ? <span>ทางลัดเว็บ</span> : item.kind !== "file" && <span className="mobile:grid-view:hidden">เปิดพรีวิว</span>}</>}
         </span>
       </span>
     </>

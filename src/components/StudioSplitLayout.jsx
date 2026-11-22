@@ -45,7 +45,7 @@ export function StudioSplitLayout({ account, children }) {
   const content = (
     <div className="min-w-0">
       {collapsed && (
-        <div className="group/edge fixed inset-y-0 left-0 z-20 hidden w-1.5 md:block"
+        <div className="group/edge fixed inset-y-0 left-0 z-20 hidden w-1.5 desktop:block"
           onPointerEnter={followEdgePointer} onPointerMove={followEdgePointer}>
           <SidebarEdgeTab buttonRef={openButton} onClick={event => toggle(false, event)} />
         </div>

@@ -12,8 +12,8 @@ import { SignOutForm } from "./SignOutForm";
 
 export function StudioSidebar({ account, toggle }) {
   return (
-    <aside className="fixed inset-x-0 bottom-0 z-3 border-t border-border bg-field px-1.5 pt-1 pb-[calc(4px+env(safe-area-inset-bottom))] md:sticky md:top-0 md:flex md:h-dvh md:min-w-[184px] md:flex-col md:gap-6 md:border-t-0 md:px-3.5 md:py-5">
-      <div className="hidden h-11 shrink-0 items-center justify-between gap-1 md:flex">
+    <aside className="fixed inset-x-0 bottom-0 z-3 border-t border-border bg-field px-1.5 pt-1 pb-[calc(4px+env(safe-area-inset-bottom))] desktop:sticky desktop:top-0 desktop:flex desktop:h-dvh desktop:min-w-[184px] desktop:flex-col desktop:gap-6 desktop:border-t-0 desktop:px-3.5 desktop:py-5">
+      <div className="hidden h-11 shrink-0 items-center justify-between gap-1 desktop:flex">
         <Link href="/library" className="flex min-w-0 items-center gap-2 rounded-xl">
           <FolderIcon className="size-8 shrink-0" />
           <span className="min-w-0">
@@ -26,7 +26,7 @@ export function StudioSidebar({ account, toggle }) {
       <Suspense fallback={<SectionNav />}>
         <ActiveSectionNav />
       </Suspense>
-      <div className="mt-auto hidden flex-col gap-3 md:flex">
+      <div className="mt-auto hidden flex-col gap-3 desktop:flex">
         <DesktopAppCard />
         <div className="space-y-2 border-t border-border pt-3.5">
           {account}
@@ -88,10 +88,10 @@ function ActiveSectionNav() {
 
 function SectionNav({ active }) {
   return (
-    <nav id="studio-sidebar-navigation" className="grid grid-cols-4 gap-[5px] md:grid-cols-1" aria-label="เมนูหลัก">
+    <nav id="studio-sidebar-navigation" className="grid grid-cols-4 gap-[5px] desktop:grid-cols-1" aria-label="เมนูหลัก">
       {studioSections.map(([id, label, Icon]) => (
         <Link key={id}
-          className="flex min-h-[50px] flex-col items-center justify-center gap-[3px] rounded-xl border border-transparent p-1 text-xs text-muted hover:bg-panel aria-[current=page]:border-accent/60 aria-[current=page]:bg-accent/15 aria-[current=page]:text-accent-text md:min-h-[46px] md:flex-row md:justify-start md:gap-3 md:px-3 md:py-2 md:text-sm"
+          className="flex min-h-[50px] mobile-landscape:min-h-[38px] mobile-landscape:flex-row mobile-landscape:gap-1.5 flex-col items-center justify-center gap-[3px] rounded-xl border border-transparent p-1 text-xs text-muted hover:bg-panel aria-[current=page]:border-accent/60 aria-[current=page]:bg-accent/15 aria-[current=page]:text-accent-text desktop:min-h-[46px] desktop:flex-row desktop:justify-start desktop:gap-3 desktop:px-3 desktop:py-2 desktop:text-sm"
           href={`/${id}`} aria-current={active === id ? "page" : undefined}>
           <Icon size={19} className="shrink-0" aria-hidden="true" />
           <span className="whitespace-nowrap">{label}</span>

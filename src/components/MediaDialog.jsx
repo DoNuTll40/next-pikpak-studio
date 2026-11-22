@@ -126,8 +126,8 @@ export function MediaDialog({ item, items = [], onSelectItem, onClose }) {
       aria-labelledby="preview-title"
       className={
         minimized
-          ? "pointer-events-none fixed inset-0 z-40 m-0 size-full max-h-none max-w-none overflow-hidden border-0 bg-transparent p-0 text-foreground open:block md:hidden"
-          : "fixed inset-0 m-0 size-full max-h-none max-w-none items-center justify-center overflow-hidden border-0 bg-transparent p-0 md:p-4 text-foreground backdrop:bg-transparent open:flex"
+          ? "pointer-events-none fixed inset-0 z-40 m-0 size-full max-h-none max-w-none overflow-hidden border-0 bg-transparent p-0 text-foreground open:block desktop:hidden"
+          : "fixed inset-0 m-0 size-full max-h-none max-w-none items-center justify-center overflow-hidden border-0 bg-transparent p-0 desktop:p-4 text-foreground backdrop:bg-transparent open:flex"
       }
     >
       <AnimatePresence onExitComplete={() => {
@@ -145,7 +145,7 @@ export function MediaDialog({ item, items = [], onSelectItem, onClose }) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: reducedMotion ? 0 : 0.22, ease: [0.22, 1, 0.36, 1] }}
-            className="fixed inset-0 bg-[#080d18]/85 md:bg-[#080d18]/55"
+            className="fixed inset-0 bg-[#080d18]/85 desktop:bg-[#080d18]/55"
           />
         )}
         {visible && (
@@ -161,8 +161,8 @@ export function MediaDialog({ item, items = [], onSelectItem, onClose }) {
               : { type: "spring", stiffness: 380, damping: 32, mass: 0.8 }}
             className={
               minimized
-                ? "pointer-events-auto fixed inset-x-2.5 bottom-[calc(64px+env(safe-area-inset-bottom))] z-50 overflow-hidden rounded-2xl border border-border bg-panel shadow-[0_8px_30px_rgba(8,13,24,0.28)]"
-                : "relative z-1 size-full max-h-dvh md:size-auto md:max-h-[calc(100dvh-32px)] md:w-[min(1120px,calc(100vw-32px))] overflow-hidden rounded-none md:rounded-2xl bg-background md:bg-panel shadow-[0_16px_48px_rgba(8,13,24,0.45)]"
+                ? "pointer-events-auto fixed inset-x-2.5 bottom-[calc(64px+env(safe-area-inset-bottom))] mobile-landscape:bottom-[calc(52px+env(safe-area-inset-bottom))] z-50 mx-auto max-w-md overflow-hidden rounded-2xl border border-border bg-panel shadow-[0_8px_30px_rgba(8,13,24,0.28)]"
+                : "relative z-1 size-full max-h-dvh desktop:size-auto desktop:max-h-[calc(100dvh-32px)] desktop:w-[min(1120px,calc(100vw-32px))] overflow-hidden rounded-none desktop:rounded-2xl bg-background desktop:bg-panel shadow-[0_16px_48px_rgba(8,13,24,0.45)]"
             }
           >
             <MediaContent
@@ -617,12 +617,12 @@ function ImagePreviewViewer({
           toggleFullscreen();
         }
       }}
-      className={`relative flex size-full flex-col justify-between bg-background text-foreground md:bg-[#080d18] md:text-white select-none focus:outline-none! ${
-        fullscreen ? "h-dvh w-dvw" : "md:h-[min(86dvh,820px)]"
+      className={`relative flex size-full flex-col justify-between bg-background text-foreground desktop:bg-[#080d18] desktop:text-white select-none focus:outline-none! ${
+        fullscreen ? "h-dvh w-dvw" : "desktop:h-[min(86dvh,820px)]"
       }`}
     >
       {/* Desktop Top Header (matches PC app: [ตัวดูรูปภาพ] | [DSC_7991.jpg] | [Copy JSON] [X]) */}
-      <div className="hidden md:flex h-11 shrink-0 items-center justify-between gap-3 border-b border-border/60 bg-panel px-4">
+      <div className="hidden desktop:flex h-11 shrink-0 items-center justify-between gap-3 border-b border-border/60 bg-panel px-4">
         <div className="flex items-center gap-2 text-xs font-medium text-muted">
           <ImageIcon size={15} className="text-accent-text" aria-hidden="true" />
           <span>ตัวดูรูปภาพ</span>
@@ -647,9 +647,9 @@ function ImagePreviewViewer({
         </div>
       </div>
 
-      {/* Mobile Native-Gallery Top Bar — overlays the full-bleed canvas so zooming uses 100% of screen height */}
+      {/* Mobile Native-Gallery Top Bar — overlays the full-bleed canvas (both portrait & landscape phones) */}
       <div
-        className={`absolute inset-x-0 top-0 z-30 flex items-center justify-between gap-2 bg-background/85 px-2 pt-[max(0.5rem,env(safe-area-inset-top))] pb-2 backdrop-blur-md transition-opacity duration-200 md:hidden ${
+        className={`absolute inset-x-0 top-0 z-30 flex items-center justify-between gap-2 bg-background/85 px-2 pt-[max(0.5rem,env(safe-area-inset-top))] pb-2 pl-[max(0.5rem,env(safe-area-inset-left))] pr-[max(0.5rem,env(safe-area-inset-right))] backdrop-blur-md transition-opacity duration-200 desktop:hidden ${
           chromeVisible ? "opacity-100" : "pointer-events-none opacity-0"
         }`}
       >
@@ -767,7 +767,7 @@ function ImagePreviewViewer({
       <div className="relative flex min-h-0 flex-1 overflow-hidden">
         <div
           ref={stageRef}
-          className={`relative flex min-h-0 flex-1 items-center justify-center overflow-hidden touch-none bg-background md:bg-[#0b101d] ${
+          className={`relative flex min-h-0 flex-1 items-center justify-center overflow-hidden touch-none bg-background desktop:bg-[#0b101d] ${
             view.zoom > 1.02 ? (isInteracting ? "cursor-grabbing" : "cursor-grab") : "cursor-zoom-in"
           }`}
           onPointerDown={handlePointerDown}
@@ -834,10 +834,10 @@ function ImagePreviewViewer({
                 event.stopPropagation();
                 resetZoom();
               }}
-              className={`absolute left-1/2 z-20 -translate-x-1/2 rounded-full border border-white/20 bg-[#080d18]/80 px-3 py-1 text-xs font-medium text-white shadow-md backdrop-blur-md transition-[bottom] duration-200 active:scale-95 md:bottom-3 ${
+              className={`absolute left-1/2 z-20 -translate-x-1/2 rounded-full border border-white/20 bg-[#080d18]/80 px-3 py-1 text-xs font-medium text-white shadow-md backdrop-blur-md transition-[bottom] duration-200 active:scale-95 desktop:bottom-3 ${
                 chromeVisible
-                  ? "bottom-[calc(126px+env(safe-area-inset-bottom))]"
-                  : "bottom-[max(1.25rem,env(safe-area-inset-bottom))]"
+                  ? "bottom-[calc(112px+env(safe-area-inset-bottom))] mobile-landscape:bottom-[calc(64px+env(safe-area-inset-bottom))]"
+                  : "bottom-[max(1rem,env(safe-area-inset-bottom))]"
               }`}
             >
               ซูม {Math.round(view.zoom * 100)}% · แตะเพื่อรีเซ็ต
@@ -853,7 +853,7 @@ function ImagePreviewViewer({
                 onClick={onPrev}
                 aria-label="ภาพก่อนหน้า (←)"
                 title="ภาพก่อนหน้า (←)"
-                className="absolute left-3.5 top-1/2 z-10 hidden size-10 -translate-y-1/2 place-items-center rounded-full bg-panel/85 text-foreground shadow-md backdrop-blur-sm hover:bg-panel disabled:pointer-events-none disabled:opacity-30 md:grid"
+                className="absolute left-3.5 top-1/2 z-10 hidden size-10 -translate-y-1/2 place-items-center rounded-full bg-panel/85 text-foreground shadow-md backdrop-blur-sm hover:bg-panel disabled:pointer-events-none disabled:opacity-30 desktop:grid"
               >
                 <ChevronLeft size={22} aria-hidden="true" />
               </button>
@@ -863,7 +863,7 @@ function ImagePreviewViewer({
                 onClick={onNext}
                 aria-label="ภาพถัดไป (→)"
                 title="ภาพถัดไป (→)"
-                className="absolute right-3.5 top-1/2 z-10 hidden size-10 -translate-y-1/2 place-items-center rounded-full bg-panel/85 text-foreground shadow-md backdrop-blur-sm hover:bg-panel disabled:pointer-events-none disabled:opacity-30 md:grid"
+                className="absolute right-3.5 top-1/2 z-10 hidden size-10 -translate-y-1/2 place-items-center rounded-full bg-panel/85 text-foreground shadow-md backdrop-blur-sm hover:bg-panel disabled:pointer-events-none disabled:opacity-30 desktop:grid"
               >
                 <ChevronRight size={22} aria-hidden="true" />
               </button>
@@ -873,7 +873,7 @@ function ImagePreviewViewer({
 
         {/* Info Sidebar / Drawer */}
         {infoOpen && (
-          <aside className="absolute inset-x-3 top-14 z-20 rounded-xl border border-border bg-panel/95 p-3.5 text-xs text-foreground shadow-xl backdrop-blur-md md:static md:inset-auto md:w-64 md:shrink-0 md:rounded-none md:border-y-0 md:border-r-0 md:border-l md:bg-panel">
+          <aside className="absolute inset-x-3 top-14 z-30 max-h-[calc(100dvh-7rem)] overflow-y-auto rounded-xl border border-border bg-panel/95 p-3.5 text-xs text-foreground shadow-xl backdrop-blur-md desktop:static desktop:inset-auto desktop:max-h-none desktop:w-64 desktop:shrink-0 desktop:rounded-none desktop:border-y-0 desktop:border-r-0 desktop:border-l desktop:bg-panel">
             <div className="mb-2.5 flex items-center justify-between border-b border-border pb-2">
               <strong className="text-xs font-semibold">ข้อมูลภาพ</strong>
               <button
@@ -925,7 +925,7 @@ function ImagePreviewViewer({
 
       {/* Desktop Filmstrip Thumbnail Bar (matches PC screenshot) */}
       {totalSiblings > 1 && stripOpen && (
-        <div className="hidden md:block shrink-0 border-t border-border/60 bg-[#0d1322] px-3 py-2">
+        <div className="hidden desktop:block shrink-0 border-t border-border/60 bg-[#0d1322] px-3 py-2">
           <div
             ref={stripRef}
             aria-label="ภาพย่อในโฟลเดอร์"
@@ -972,7 +972,7 @@ function ImagePreviewViewer({
       )}
 
       {/* Desktop Bottom Status & Zoom Toolbar (matches PC screenshot: [Filmstrip] JPG 3008x2008 589.3KiB | (i) [-] [slider] [+] [100%] [Fit] [RotateL] [RotateR] [Fullscreen]) */}
-      <footer className="hidden md:flex h-11 shrink-0 items-center justify-between gap-3 border-t border-border/60 bg-panel px-3.5 text-xs">
+      <footer className="hidden desktop:flex h-11 shrink-0 items-center justify-between gap-3 border-t border-border/60 bg-panel px-3.5 text-xs">
         <div className="flex min-w-0 items-center gap-2.5">
           {totalSiblings > 1 && (
             <button
@@ -1104,18 +1104,18 @@ function ImagePreviewViewer({
         </div>
       </footer>
 
-      {/* Mobile Native-Gallery Bottom Strip + Clean Icon Toolbar — overlays the full-bleed canvas */}
+      {/* Mobile Native-Gallery Bottom Strip + Clean Icon Toolbar — overlays the full-bleed canvas (compact in mobile landscape) */}
       <div
-        className={`absolute inset-x-0 bottom-0 z-30 bg-background/85 pt-2 pb-[max(0.65rem,env(safe-area-inset-bottom))] backdrop-blur-md transition-opacity duration-200 md:hidden ${
+        className={`absolute inset-x-0 bottom-0 z-30 bg-background/85 pt-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom))] pl-[max(0.5rem,env(safe-area-inset-left))] pr-[max(0.5rem,env(safe-area-inset-right))] backdrop-blur-md transition-opacity duration-200 desktop:hidden ${
           chromeVisible ? "opacity-100" : "pointer-events-none opacity-0"
         }`}
       >
-        {/* Horizontal Thumbnail Scrubber Strip */}
+        {/* Horizontal Thumbnail Scrubber Strip (compact in landscape so image stays spacious) */}
         {totalSiblings > 1 && (
           <div
             ref={mobileStripRef}
             aria-label="ภาพย่อในโฟลเดอร์"
-            className="flex items-center gap-1 overflow-x-auto px-[calc(50vw-24px)] pb-2.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className="flex items-center gap-1 overflow-x-auto px-[calc(50vw-24px)] pb-2 mobile-landscape:hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
             {siblings.map(photo => {
               const active = photo.id === item.id;
@@ -1298,7 +1298,7 @@ function MediaContent({
 
   if (result === null) {
     return (
-      <div className="relative flex size-full md:aspect-video md:max-h-[calc(100dvh-32px)] items-center justify-center overflow-hidden bg-[#080d18]">
+      <div className="relative flex size-full desktop:aspect-video desktop:max-h-[calc(100dvh-32px)] items-center justify-center overflow-hidden bg-[#080d18]">
         {item.thumbnail && (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={item.thumbnail} alt="" aria-hidden="true" referrerPolicy="no-referrer"
@@ -1315,7 +1315,7 @@ function MediaContent({
 
   if (!result || result.kind === "none") {
     return (
-      <div className="flex size-full flex-col justify-center bg-panel text-foreground md:size-auto">
+      <div className="flex size-full flex-col justify-center bg-panel text-foreground desktop:size-auto">
         <OverlayHeader title={item.name} titleClass={titleClass} fileInfo={fileInfo} onClose={onClose} overlay={false} />
         <p className="mx-auto max-w-md px-4 py-10 text-center text-sm text-muted" role="status">
           ไม่มีลิงก์สำหรับเปิดไฟล์นี้บนเว็บ ลองเปิดพรีวิวใน PikPak Desktop เพื่ออัปเดตลิงก์

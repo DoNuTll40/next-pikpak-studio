@@ -28,7 +28,7 @@ export function SettingsPage({ title, children }) {
       <StudioPage
         header={<header className="px-4 pt-5 sm:pt-6"><h1 className={`${width} text-xl font-semibold`}>{title}</h1></header>}
         footer={<SignOutForm className={`${width} [&_button]:w-full`} />}
-        footerClassName="md:hidden"
+        footerClassName="desktop:hidden"
       >
         <div className={`${width} mt-4 pb-4`}>
           <div className="mb-5">{children}</div>
