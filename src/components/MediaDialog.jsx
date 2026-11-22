@@ -88,14 +88,33 @@ export function MediaDialog({ item, items = [], onSelectItem, onClose }) {
       } else if (!el.open) {
         el.show();
       }
-    } else {
-      if (el.open && !el.matches(":modal")) {
-        el.close();
-      }
-      if (!el.open) {
-        el.showModal();
-      }
+      return;
     }
+
+    // Lock background page scroll & remove main scrollbar cleanly without horizontal layout shift
+    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+    const prevHtmlOverflow = document.documentElement.style.overflow;
+    const prevBodyOverflow = document.body.style.overflow;
+    const prevBodyPaddingRight = document.body.style.paddingRight;
+
+    document.documentElement.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+    if (scrollbarWidth > 0) {
+      document.body.style.paddingRight = `${scrollbarWidth}px`;
+    }
+
+    if (el.open && !el.matches(":modal")) {
+      el.close();
+    }
+    if (!el.open) {
+      el.showModal();
+    }
+
+    return () => {
+      document.documentElement.style.overflow = prevHtmlOverflow;
+      document.body.style.overflow = prevBodyOverflow;
+      document.body.style.paddingRight = prevBodyPaddingRight;
+    };
   }, [minimized]);
 
   function requestClose() {

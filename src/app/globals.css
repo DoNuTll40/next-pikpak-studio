@@ -67,6 +67,12 @@ a, img {
   -webkit-user-drag: none;
 }
 
+html:has(dialog:modal),
+body:has(dialog:modal) {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
 .studio-split > .studio-panes {
   position: relative;
   overflow: visible;
