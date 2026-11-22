@@ -836,7 +836,7 @@ function ImagePreviewViewer({
               }}
               className={`absolute left-1/2 z-20 -translate-x-1/2 rounded-full border border-white/20 bg-[#080d18]/80 px-3 py-1 text-xs font-medium text-white shadow-md backdrop-blur-md transition-[bottom] duration-200 active:scale-95 desktop:bottom-3 ${
                 chromeVisible
-                  ? "bottom-[calc(112px+env(safe-area-inset-bottom))] mobile-landscape:bottom-[calc(64px+env(safe-area-inset-bottom))]"
+                  ? "bottom-[calc(128px+env(safe-area-inset-bottom))] mobile-landscape:bottom-[calc(64px+env(safe-area-inset-bottom))]"
                   : "bottom-[max(1rem,env(safe-area-inset-bottom))]"
               }`}
             >
@@ -923,9 +923,9 @@ function ImagePreviewViewer({
         )}
       </div>
 
-      {/* Desktop Filmstrip Thumbnail Bar (matches PC screenshot) */}
+      {/* Desktop Filmstrip Thumbnail Bar (true aspect ratio, sharp corners, unclipped ring) */}
       {totalSiblings > 1 && stripOpen && (
-        <div className="hidden desktop:block shrink-0 border-t border-border/60 bg-[#0d1322] px-3 py-2">
+        <div className="hidden desktop:block shrink-0 border-t border-border/60 bg-[#0d1322] px-3 py-1">
           <div
             ref={stripRef}
             aria-label="ภาพย่อในโฟลเดอร์"
@@ -934,7 +934,7 @@ function ImagePreviewViewer({
                 event.currentTarget.scrollLeft += event.deltaY;
               }
             }}
-            className="flex items-center gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:thin]"
+            className="flex items-center gap-1 overflow-x-auto px-1 py-1.5 [scrollbar-width:thin]"
           >
             {siblings.map(photo => {
               const active = photo.id === item.id;
@@ -946,10 +946,10 @@ function ImagePreviewViewer({
                   aria-current={active}
                   title={photo.name}
                   onClick={() => onSelectItem?.(photo)}
-                  className={`relative grid h-14 min-w-14 max-w-24 shrink-0 place-items-center overflow-hidden rounded-md border transition-all ${
+                  className={`relative block shrink-0 rounded-none p-0 transition-all ${
                     active
-                      ? "border-accent ring-2 ring-accent/50 brightness-105"
-                      : "border-white/10 opacity-65 hover:opacity-100"
+                      ? "mx-1 ring-2 ring-accent brightness-105"
+                      : "opacity-65 hover:opacity-100"
                   }`}
                 >
                   {photo.thumbnail ? (
@@ -959,10 +959,12 @@ function ImagePreviewViewer({
                       alt=""
                       loading="lazy"
                       referrerPolicy="no-referrer"
-                      className="h-full w-auto object-cover"
+                      className="block h-14 w-auto max-w-none min-w-[24px] rounded-none bg-field/30"
                     />
                   ) : (
-                    <ImageIcon size={18} className="text-muted" aria-hidden="true" />
+                    <span className="grid h-14 w-14 place-items-center bg-field/40">
+                      <ImageIcon size={18} className="text-muted" aria-hidden="true" />
+                    </span>
                   )}
                 </button>
               );
@@ -1106,16 +1108,16 @@ function ImagePreviewViewer({
 
       {/* Mobile Native-Gallery Bottom Strip + Clean Icon Toolbar — overlays the full-bleed canvas (compact in mobile landscape) */}
       <div
-        className={`absolute inset-x-0 bottom-0 z-30 bg-background/85 pt-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom))] pl-[max(0.5rem,env(safe-area-inset-left))] pr-[max(0.5rem,env(safe-area-inset-right))] backdrop-blur-md transition-opacity duration-200 desktop:hidden ${
+        className={`absolute inset-x-0 bottom-0 z-30 bg-background/85 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur-md transition-opacity duration-200 desktop:hidden ${
           chromeVisible ? "opacity-100" : "pointer-events-none opacity-0"
         }`}
       >
-        {/* Horizontal Thumbnail Scrubber Strip (compact in landscape so image stays spacious) */}
+        {/* Full-bleed Horizontal Thumbnail Scrubber Strip (true aspect ratio, sharp corners, unclipped ring) */}
         {totalSiblings > 1 && (
           <div
             ref={mobileStripRef}
             aria-label="ภาพย่อในโฟลเดอร์"
-            className="flex items-center gap-1 overflow-x-auto px-[calc(50vw-24px)] pb-2 mobile-landscape:hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className="flex w-full items-center gap-0.5 overflow-x-auto px-[calc(50vw-24px)] py-2 mobile-landscape:hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
             {siblings.map(photo => {
               const active = photo.id === item.id;
@@ -1126,10 +1128,10 @@ function ImagePreviewViewer({
                   aria-label={photo.name}
                   aria-current={active}
                   onClick={() => onSelectItem?.(photo)}
-                  className={`relative grid h-11 shrink-0 place-items-center overflow-hidden rounded-[5px] transition-all duration-150 ${
+                  className={`relative block shrink-0 rounded-none p-0 transition-all duration-150 ${
                     active
-                      ? "mx-1.5 w-11 ring-2 ring-accent shadow-sm"
-                      : "w-9 opacity-65 active:opacity-100"
+                      ? "mx-2 ring-2 ring-accent brightness-105"
+                      : "opacity-75 active:opacity-100"
                   }`}
                 >
                   {photo.thumbnail ? (
@@ -1139,10 +1141,10 @@ function ImagePreviewViewer({
                       alt=""
                       loading="lazy"
                       referrerPolicy="no-referrer"
-                      className="size-full object-cover"
+                      className="block h-11 w-auto max-w-none min-w-[20px] rounded-none bg-field/40"
                     />
                   ) : (
-                    <span className="grid size-full place-items-center bg-field">
+                    <span className="grid h-11 w-11 place-items-center bg-field">
                       <ImageIcon size={15} className="text-muted" aria-hidden="true" />
                     </span>
                   )}
@@ -1153,7 +1155,7 @@ function ImagePreviewViewer({
         )}
 
         {/* Clean Minimal Bottom Icon Bar (matches Samsung Gallery: Link / Download / Info / Share / JSON) */}
-        <div className="grid grid-cols-5 items-center border-t border-border/50 px-2 pt-1.5">
+        <div className="grid grid-cols-5 items-center border-t border-border/50 pt-1.5 pl-[max(0.5rem,env(safe-area-inset-left))] pr-[max(0.5rem,env(safe-area-inset-right))]">
           <button
             type="button"
             disabled={!displayUrl}
