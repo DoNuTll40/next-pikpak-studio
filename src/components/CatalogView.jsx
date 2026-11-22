@@ -35,6 +35,17 @@ export function CatalogView({ path, folders, items }) {
   const [preview, setPreview] = useState(null);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const [now, setNow] = useState(null);
+
+  useEffect(() => {
+    const sync = () => setNow(Date.now());
+    const init = setTimeout(sync, 0);
+    const interval = setInterval(sync, 60_000);
+    return () => {
+      clearTimeout(init);
+      clearInterval(interval);
+    };
+  }, []);
 
   // Detect photo-album folders on mobile (contains images, and no folders or videos in located list)
   const isPhotoFolder =
@@ -62,6 +73,7 @@ export function CatalogView({ path, folders, items }) {
       <CatalogItem
         key={item.id}
         item={item}
+        now={now}
         selected={selected.has(item.id)}
         onSelect={select}
         onClear={clear}

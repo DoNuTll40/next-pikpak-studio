@@ -51,6 +51,15 @@ const mediaKind = `CASE
   ELSE 'file'
 END`;
 
+const itemExpiresAtSql = `coalesce(
+  NULLIF((item.file_info -> 'preview' -> 'variants' -> 0 ->> 'expiresAt')::double precision, 0),
+  CASE
+    WHEN item.file_info -> 'preview' ->> 'url' ~ 'expire=[0-9]{10,}'
+    THEN (substring(item.file_info -> 'preview' ->> 'url' FROM 'expire=([0-9]+)')::double precision * 1000)
+    ELSE NULL
+  END
+)`;
+
 export async function readCatalogMediaItem(id) {
   return readStudio(async (query, useDesktopCache) => (await query(`
     SELECT item.file_id AS id, item.name, ${mediaKind} AS kind,
@@ -64,7 +73,7 @@ export async function readCatalogMediaItem(id) {
 }
 
 export async function readCatalog(folderId) {
-  const { folders, files, previews, thumbnails, useDesktopCache } = await readStudio(async (query, useDesktopCache) => {
+  const { folders, files, folderExpiries, previews, thumbnails, useDesktopCache } = await readStudio(async (query, useDesktopCache) => {
     const thumbnails = useDesktopCache ? await openDesktopThumbnails() : null;
     const { rows: folders } = await query(`
       SELECT item.file_id AS id, item.parent_file_id AS parent, item.name, item.kind,
@@ -99,7 +108,11 @@ export async function readCatalog(folderId) {
 
     const { rows: files } = await query(`
       SELECT item.file_id AS id, item.parent_file_id AS parent, item.name,
-        ${mediaKind} AS kind, item.thumbnail_url AS thumbnail, (item.file_info IS NOT NULL OR EXISTS (
+        ${mediaKind} AS kind, item.thumbnail_url AS thumbnail,
+        item.size_bytes::double precision AS "sizeBytes",
+        NULLIF((item.file_info -> 'preview' -> 'variants' -> 0 ->> 'duration')::double precision, 0) AS duration,
+        ${itemExpiresAtSql} AS "expiresAt",
+        (item.file_info IS NOT NULL OR EXISTS (
           SELECT 1 FROM studio.watch_history history
           WHERE history.user_id = $1 AND history.file_id = item.file_id
         )) AS "hasInfo"
@@ -116,6 +129,14 @@ export async function readCatalog(folderId) {
       ORDER BY item.name, item.file_id
     `, [folderId]);
 
+    const { rows: folderExpiries } = await query(`
+      SELECT item.parent_file_id AS id, min(${itemExpiresAtSql}) AS "expiresAt"
+      FROM studio.catalog_items item
+      WHERE item.user_id = $1 AND item.kind = 'file'
+        AND item.file_info IS NOT NULL AND item.parent_file_id IS NOT NULL
+      GROUP BY item.parent_file_id
+    `);
+
     const folderIds = new Set(folders.map(folder => folder.id));
     const visibleFolders = folders.filter(folder => folder.parent === folderId ||
       (folderId === null && !folderIds.has(folder.parent)));
@@ -127,8 +148,50 @@ export async function readCatalog(folderId) {
       ORDER BY item.parent_file_id, (item.kind = 'file') DESC, item.name, item.file_id
     `, [visibleFolders.map(folder => folder.id), thumbnails.ids]) : { rows: [] };
 
-    return { folders, files, previews, thumbnails, useDesktopCache };
+    return { folders, files, folderExpiries, previews, thumbnails, useDesktopCache };
   });
+
+  // Propagate earliest synced file link expiration bottom-up through the folder tree
+  const directExpiry = new Map();
+  for (const row of folderExpiries) {
+    if (Number.isFinite(row.expiresAt) && row.expiresAt > 0) {
+      directExpiry.set(row.id, row.expiresAt);
+    }
+  }
+  const childrenByParent = new Map();
+  for (const folder of folders) {
+    if (folder.parent) {
+      let list = childrenByParent.get(folder.parent);
+      if (!list) {
+        list = [];
+        childrenByParent.set(folder.parent, list);
+      }
+      list.push(folder.id);
+    }
+  }
+  const memoExpiry = new Map();
+  const visiting = new Set();
+  function resolveFolderExpiry(id) {
+    if (memoExpiry.has(id)) return memoExpiry.get(id);
+    if (visiting.has(id)) return null;
+    visiting.add(id);
+    let earliest = directExpiry.get(id) ?? null;
+    const subs = childrenByParent.get(id);
+    if (subs) {
+      for (const subId of subs) {
+        const subExp = resolveFolderExpiry(subId);
+        if (subExp !== null && (earliest === null || subExp < earliest)) {
+          earliest = subExp;
+        }
+      }
+    }
+    visiting.delete(id);
+    memoExpiry.set(id, earliest);
+    return earliest;
+  }
+  for (const folder of folders) {
+    folder.expiresAt = resolveFolderExpiry(folder.id);
+  }
 
   if (thumbnails) {
     const foldersById = new Map(folders.map(folder => [folder.id, folder]));

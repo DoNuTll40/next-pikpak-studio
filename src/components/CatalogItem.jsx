@@ -2,8 +2,8 @@
 
 import Link, { useLinkStatus } from "next/link";
 import { useRef } from "react";
-import { Check, File, Image, LoaderCircle, Play } from "lucide-react";
-import { catalogFontClass, folderHref } from "@/lib/catalog";
+import { Check, Clock, File, Image, LoaderCircle, Play } from "lucide-react";
+import { catalogFontClass, folderHref, formatDuration, formatExpiryInfo, formatFileSize } from "@/lib/catalog";
 import { surface, thumbnailPreview } from "@/lib/ui-styles";
 import { FolderArtwork } from "./FolderArtwork";
 import { FolderActions } from "./FolderActions";
@@ -11,13 +11,22 @@ import { ScanStatus } from "./ScanTree";
 import { ShortcutArtwork } from "./ShortcutArtwork";
 import { Thumbnail } from "./Thumbnail";
 
-export function CatalogItem({ item, selected, onSelect, onClear, onSelectAll, onPreview, mobilePhotoTile = false }) {
+export function CatalogItem({ item, now = null, selected, onSelect, onClear, onSelectAll, onPreview, mobilePhotoTile = false }) {
   const lastTouch = useRef(null);
   const folderLink = useRef(null);
   const Icon = item.kind === "image" ? Image : File;
   const isFolder = item.kind === "folder";
   const isVideo = item.kind === "video";
   const isShortcut = item.kind === "file" && /\.url$/i.test(item.name);
+  const durationLabel = isVideo ? formatDuration(item.duration) : "";
+  const sizeLabel = !isFolder ? formatFileSize(item.sizeBytes) : "";
+  const expiry = formatExpiryInfo(item.expiresAt, now);
+  const expiryTone =
+    expiry?.state === "expired"
+      ? "text-rose-400 light-theme:text-rose-600"
+      : expiry?.state === "soon"
+        ? "text-warning"
+        : "text-muted";
   const card = `${surface} flex min-w-0 touch-manipulation select-none flex-col p-[7px] text-start hover:border-accent-text data-[selected=true]:border-accent data-[selected=true]:bg-accent/10 data-[selected=true]:ring-1 data-[selected=true]:ring-accent/35 desktop:p-[9px] list-view:flex-row list-view:items-center list-view:gap-3 list-view:px-3 list-view:py-[7px] ${
     mobilePhotoTile
       ? "mobile:grid-view:rounded-none mobile:grid-view:border-0 mobile:grid-view:bg-transparent mobile:grid-view:p-0"
@@ -91,11 +100,18 @@ export function CatalogItem({ item, selected, onSelect, onClear, onSelectAll, on
             <Thumbnail src={item.thumbnail} className="absolute inset-0 size-full scale-110 object-cover blur-[16px] brightness-[.68]" />
             <Thumbnail src={item.thumbnail} className={`${thumbnailPreview} ${mobilePhotoTile ? "mobile:grid-view:object-cover" : ""}`} />
             {isVideo && (
-              <span aria-hidden="true" className="pointer-events-none absolute inset-0 grid place-items-center">
-                <span className="grid size-11 place-items-center rounded-full bg-black/55 text-white list-view:size-6">
-                  <Play className="ml-0.5 size-5 fill-current list-view:size-3" />
+              <>
+                <span aria-hidden="true" className="pointer-events-none absolute inset-0 grid place-items-center">
+                  <span className="grid size-11 place-items-center rounded-full bg-black/55 text-white list-view:size-6">
+                    <Play className="ml-0.5 size-5 fill-current list-view:size-3" />
+                  </span>
                 </span>
-              </span>
+                {durationLabel && (
+                  <span className="pointer-events-none absolute right-1.5 bottom-1.5 z-10 rounded-md bg-black/75 px-1.5 py-0.5 text-[11px] leading-tight font-medium text-white tabular-nums backdrop-blur-[2px] list-view:hidden">
+                    {durationLabel}
+                  </span>
+                )}
+              </>
             )}
           </>
         )}
@@ -107,10 +123,33 @@ export function CatalogItem({ item, selected, onSelect, onClear, onSelectAll, on
           {item.name}
         </span>
         <span className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-[5px] text-xs text-muted desktop:justify-between">
-          {isFolder ? <><span>{item.count > 0 ? `${item.count} รายการ` : "โฟลเดอร์"}</span><ScanStatus status={item.status} /></> :
-            <><span>{item.hasInfo ? "เคยเปิดใน Desktop" : "ยังไม่มีประวัติเปิด"}</span>
-              {isShortcut ? <span>ทางลัดเว็บ</span> : item.kind !== "file" && <span className="mobile:grid-view:hidden">เปิดพรีวิว</span>}</>}
+          {isFolder ? (
+            <>
+              <span>{item.count > 0 ? `${item.count} รายการ` : "โฟลเดอร์"}</span>
+              <ScanStatus status={item.status} />
+            </>
+          ) : (
+            <>
+              <span className="inline-flex min-w-0 flex-wrap items-center gap-x-1.5 tabular-nums">
+                {durationLabel && <span className="hidden list-view:inline font-medium text-foreground/85">{durationLabel}</span>}
+                {durationLabel && sizeLabel && <span className="hidden list-view:inline opacity-60">·</span>}
+                {sizeLabel && <span className="font-medium text-foreground/80">{sizeLabel}</span>}
+                {sizeLabel && <span className="opacity-60">·</span>}
+                <span>{item.hasInfo ? "เคยเปิดใน Desktop" : "ยังไม่มีประวัติเปิด"}</span>
+              </span>
+              {isShortcut ? <span>ทางลัดเว็บ</span> : item.kind !== "file" && <span className="mobile:grid-view:hidden shrink-0">เปิดพรีวิว</span>}
+            </>
+          )}
         </span>
+        {expiry && (
+          <span
+            title={isFolder ? `ลิงก์ที่ใกล้หมดอายุที่สุดในโฟลเดอร์นี้ (${expiry.title})` : expiry.title}
+            className={`mt-1.5 flex items-center gap-1 text-[11px] leading-tight tabular-nums ${expiryTone}`}
+          >
+            <Clock size={11} className="shrink-0 opacity-85" aria-hidden="true" />
+            <span className="truncate">{expiry.label}</span>
+          </span>
+        )}
       </span>
     </>
   );

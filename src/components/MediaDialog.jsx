@@ -933,6 +933,12 @@ function ImagePreviewViewer({
                   <dd className="mt-0.5 font-medium tabular-nums">{sizeText}</dd>
                 </div>
               )}
+              {item.expiresAt && (
+                <div>
+                  <dt className="text-[11px] text-muted">หมดอายุลิงก์</dt>
+                  <dd className="mt-0.5 font-medium tabular-nums">{formatStudioDate(item.expiresAt)}</dd>
+                </div>
+              )}
               <div>
                 <dt className="text-[11px] text-muted">รหัสไฟล์</dt>
                 <dd className="mt-0.5 truncate font-mono text-[11px] text-muted">{item.id}</dd>

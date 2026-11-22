@@ -7,6 +7,7 @@ import {
   Braces,
   Check,
   ChevronDown,
+  Clock,
   Download,
   FastForward,
   Link2,
@@ -30,7 +31,7 @@ import {
   VolumeX,
   X,
 } from "lucide-react";
-import { catalogFontClass, resolutionLabel } from "@/lib/catalog";
+import { catalogFontClass, formatDuration, formatExpiryInfo, formatFileSize, resolutionLabel } from "@/lib/catalog";
 import { Thumbnail } from "./Thumbnail";
 import { VideoStatsOverlay } from "./VideoStatsOverlay";
 
@@ -179,6 +180,17 @@ export function VideoPlayer({
   const [hoverSeek, setHoverSeek] = useState(null);
   const [volumeDragging, setVolumeDragging] = useState(false);
   const [seekRipple, setSeekRipple] = useState(null);
+  const [now, setNow] = useState(null);
+
+  useEffect(() => {
+    const sync = () => setNow(Date.now());
+    const init = setTimeout(sync, 0);
+    const interval = setInterval(sync, 60_000);
+    return () => {
+      clearTimeout(init);
+      clearInterval(interval);
+    };
+  }, []);
 
   // Reset playback state smoothly inside the persistent player whenever switching to another video
   const [trackedFileId, setTrackedFileId] = useState(fileId);
@@ -1034,6 +1046,8 @@ export function VideoPlayer({
   const VolumeIcon = displayVolume === 0 ? VolumeX : displayVolume < 0.5 ? Volume1 : Volume2;
 
   const otherVideos = siblings.filter(entry => entry.id !== fileId);
+  const activeSizeLabel = formatFileSize(fileInfo?.size || source?.size);
+  const activeExpiry = formatExpiryInfo(source?.expiresAt, now);
 
   return (
     <div
@@ -1825,8 +1839,24 @@ export function VideoPlayer({
               </h2>
               <p className="mt-1 text-xs text-muted tabular-nums">
                 {loading ? "กำลังโหลด…" : playing ? "กำลังเล่น" : "หยุดชั่วคราว"} · {shortQualityLabel(source)} · {rate}x
+                {activeSizeLabel ? ` · ${activeSizeLabel}` : ""}
                 {totalSiblings > 1 ? ` · คลิปที่ ${currentIndex + 1}/${totalSiblings}` : ""}
               </p>
+              {activeExpiry && (
+                <p
+                  title={activeExpiry.title}
+                  className={`mt-1 flex items-center gap-1 text-[11px] tabular-nums ${
+                    activeExpiry.state === "expired"
+                      ? "text-rose-400 light-theme:text-rose-600"
+                      : activeExpiry.state === "soon"
+                        ? "text-warning"
+                        : "text-muted"
+                  }`}
+                >
+                  <Clock size={11} className="shrink-0" aria-hidden="true" />
+                  <span>{activeExpiry.label}</span>
+                </p>
+              )}
             </div>
             <button
               type="button"
@@ -1842,32 +1872,56 @@ export function VideoPlayer({
             <div className="mt-4">
               <p className="mb-2 text-xs font-semibold text-muted">วิดีโออื่นในโฟลเดอร์นี้ ({otherVideos.length})</p>
               <div className="grid grid-cols-2 gap-2.5">
-                {otherVideos.map(entry => (
-                  <button
-                    key={entry.id}
-                    type="button"
-                    onClick={() => onSelectSibling?.(entry)}
-                    className="flex min-w-0 flex-col rounded-2xl border border-border bg-panel p-1.5 text-start active:scale-[0.98]"
-                  >
-                    <span className="relative grid aspect-video w-full place-items-center overflow-hidden rounded-xl bg-art">
-                      {entry.thumbnail && (
-                        <>
-                          <Thumbnail src={entry.thumbnail} className="absolute inset-0 size-full scale-110 object-cover blur-[12px] brightness-[.68]" />
-                          <Thumbnail src={entry.thumbnail} className="absolute inset-0 size-full object-contain" />
-                        </>
-                      )}
-                      <span aria-hidden="true" className="pointer-events-none relative z-1 grid size-9 place-items-center rounded-full bg-black/55 text-white">
-                        <Play size={16} className="ml-0.5 fill-current" />
+                {otherVideos.map(entry => {
+                  const entryDuration = formatDuration(entry.duration);
+                  const entrySize = formatFileSize(entry.sizeBytes);
+                  const entryExpiry = formatExpiryInfo(entry.expiresAt, now);
+                  return (
+                    <button
+                      key={entry.id}
+                      type="button"
+                      onClick={() => onSelectSibling?.(entry)}
+                      className="flex min-w-0 flex-col rounded-2xl border border-border bg-panel p-1.5 text-start active:scale-[0.98]"
+                    >
+                      <span className="relative grid aspect-video w-full place-items-center overflow-hidden rounded-xl bg-art">
+                        {entry.thumbnail && (
+                          <>
+                            <Thumbnail src={entry.thumbnail} className="absolute inset-0 size-full scale-110 object-cover blur-[12px] brightness-[.68]" />
+                            <Thumbnail src={entry.thumbnail} className="absolute inset-0 size-full object-contain" />
+                          </>
+                        )}
+                        <span aria-hidden="true" className="pointer-events-none relative z-1 grid size-9 place-items-center rounded-full bg-black/55 text-white">
+                          <Play size={16} className="ml-0.5 fill-current" />
+                        </span>
+                        {entryDuration && (
+                          <span className="pointer-events-none absolute right-1.5 bottom-1.5 z-10 rounded-md bg-black/75 px-1.5 py-0.5 text-[10px] leading-tight font-medium text-white tabular-nums">
+                            {entryDuration}
+                          </span>
+                        )}
                       </span>
-                    </span>
-                    <span className={`mt-2 line-clamp-1 px-0.5 text-xs font-medium text-foreground ${catalogFontClass(entry.name) ?? ""}`}>
-                      {entry.name}
-                    </span>
-                    <span className="mt-0.5 px-0.5 pb-0.5 text-[11px] text-muted">
-                      {entry.hasInfo ? "เคยเปิดใน Desktop" : "ยังไม่มีประวัติเปิด"}
-                    </span>
-                  </button>
-                ))}
+                      <span className={`mt-2 line-clamp-1 px-0.5 text-xs font-medium text-foreground ${catalogFontClass(entry.name) ?? ""}`}>
+                        {entry.name}
+                      </span>
+                      <span className="mt-0.5 truncate px-0.5 text-[11px] text-muted tabular-nums">
+                        {entrySize || (entry.hasInfo ? "เคยเปิดใน Desktop" : "ยังไม่มีประวัติเปิด")}
+                      </span>
+                      {entryExpiry && (
+                        <span
+                          className={`mt-0.5 flex items-center gap-1 px-0.5 pb-0.5 text-[10.5px] leading-tight tabular-nums ${
+                            entryExpiry.state === "expired"
+                              ? "text-rose-400 light-theme:text-rose-600"
+                              : entryExpiry.state === "soon"
+                                ? "text-warning"
+                                : "text-muted"
+                          }`}
+                        >
+                          <Clock size={10} className="shrink-0" aria-hidden="true" />
+                          <span className="truncate">{entryExpiry.compactLabel}</span>
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}
