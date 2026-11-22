@@ -98,6 +98,12 @@ export function VideoPlayer({
   variants,
   selected,
   onSelectQuality,
+  currentIndex = 0,
+  totalSiblings = 1,
+  hasPrev = false,
+  hasNext = false,
+  onPrev,
+  onNext,
   failed,
   errorMessage,
   errorAction = null,
@@ -650,6 +656,28 @@ export function VideoPlayer({
 
     const stage = stageRef.current;
     if (!stage) return;
+
+    const dx = event.clientX - touchStartPosRef.current.x;
+    const dy = event.clientY - touchStartPosRef.current.y;
+    if (!fullscreen) {
+      // Swipe left / right to switch to next / previous video in the same folder
+      if (Math.abs(dx) > 56 && Math.abs(dx) > Math.abs(dy) * 1.3) {
+        if (dx < 0 && hasNext && typeof onNext === "function") {
+          onNext();
+          return;
+        }
+        if (dx > 0 && hasPrev && typeof onPrev === "function") {
+          onPrev();
+          return;
+        }
+      }
+      // Swipe down to close / minimize player on mobile
+      if (dy > 76 && Math.abs(dy) > Math.abs(dx) * 1.4 && typeof onClose === "function") {
+        onClose();
+        return;
+      }
+    }
+
     const rect = stage.getBoundingClientRect();
     const relX = (event.clientX - rect.left) / Math.max(1, rect.width);
     const side = relX < 0.36 ? "left" : relX > 0.64 ? "right" : "center";
@@ -952,22 +980,26 @@ export function VideoPlayer({
   const VolumeIcon = displayVolume === 0 ? VolumeX : displayVolume < 0.5 ? Volume1 : Volume2;
 
   return (
-    <div
-      ref={stageRef}
-      tabIndex={-1}
-      role="region"
-      aria-label="ตัวเล่นวิดีโอ"
-      className={`group/player relative flex items-center justify-center overflow-hidden bg-[#080d18] select-none touch-manipulation focus:outline-none! ${
-        fullscreen ? "size-full" : "aspect-video max-h-dvh sm:max-h-[calc(100dvh-32px)] w-full"
-      }`}
-      onKeyDown={handleKeyDown}
-      onContextMenu={handleContextMenu}
-      onPointerMove={handleVideoPointerMove}
-      onPointerLeave={event => {
-        if (event.pointerType === "touch") return;
-        if (playing && !scrubbing && !openMenu && !contextMenu) setControlsVisible(false);
-      }}
-    >
+    <div className={fullscreen ? "size-full bg-[#080d18]" : "flex size-full flex-col justify-between bg-[#080d18] md:block md:size-auto"}>
+      {/* Spacer for mobile vertical centering when not in fullscreen */}
+      {!fullscreen && <div className="flex-1 md:hidden" aria-hidden="true" />}
+
+      <div
+        ref={stageRef}
+        tabIndex={-1}
+        role="region"
+        aria-label="ตัวเล่นวิดีโอ"
+        className={`group/player relative flex items-center justify-center overflow-hidden bg-[#080d18] select-none touch-manipulation focus:outline-none! ${
+          fullscreen ? "size-full" : "aspect-video max-h-dvh sm:max-h-[calc(100dvh-32px)] w-full"
+        }`}
+        onKeyDown={handleKeyDown}
+        onContextMenu={handleContextMenu}
+        onPointerMove={handleVideoPointerMove}
+        onPointerLeave={event => {
+          if (event.pointerType === "touch") return;
+          if (playing && !scrubbing && !openMenu && !contextMenu) setControlsVisible(false);
+        }}
+      >
       <video
         ref={videoRef}
         autoPlay
@@ -1051,31 +1083,53 @@ export function VideoPlayer({
             scheduleHide();
           }}
         >
+          {/* Mobile Header: [X] | [Title · 1 / 14] | [Settings/Quality] */}
+          <div className="flex w-full items-center justify-between gap-2 md:hidden">
+            {!fullscreen && onClose ? (
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="ปิดพรีวิว"
+                className="grid size-9 shrink-0 place-items-center rounded-full text-white/90 active:bg-white/15"
+              >
+                <X size={20} aria-hidden="true" />
+              </button>
+            ) : (
+              <span className="size-9 shrink-0" aria-hidden="true" />
+            )}
+
+            <div className="flex min-w-0 flex-1 items-center justify-center gap-1.5 text-center">
+              <span className={`truncate text-xs font-semibold text-white drop-shadow-xs ${titleClass}`}>
+                {title}
+              </span>
+              {totalSiblings > 1 && (
+                <span className="shrink-0 text-xs font-semibold text-white/80 tabular-nums">
+                  · {currentIndex + 1} / {totalSiblings}
+                </span>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setOpenMenu(prev => prev === "more" ? null : "more")}
+              aria-label="ตั้งค่าการเล่น"
+              aria-expanded={openMenu === "more"}
+              className="grid size-9 shrink-0 place-items-center rounded-full text-white/90 active:bg-white/15"
+            >
+              <SlidersHorizontal size={18} aria-hidden="true" />
+            </button>
+          </div>
+
+          {/* Desktop Header (md and above — unchanged) */}
           <h2
             id="preview-title"
             title={title}
-            className={`min-w-0 truncate text-xs sm:text-sm font-medium text-white drop-shadow-xs ${titleClass}`}
+            className={`hidden md:block min-w-0 truncate text-sm font-medium text-white drop-shadow-xs ${titleClass}`}
           >
             {title}
           </h2>
-          <div className="flex shrink-0 items-center gap-1.5">
+          <div className="hidden md:flex shrink-0 items-center gap-1.5">
             {headerActions}
-            <button
-              type="button"
-              onClick={() => {
-                setLocked(true);
-                setOpenMenu(null);
-                setContextMenu(null);
-                showToast("ล็อกหน้าจอสัมผัสแล้ว");
-                clearTimeout(hideTimerRef.current);
-                hideTimerRef.current = setTimeout(() => setControlsVisible(false), 1800);
-              }}
-              aria-label="ล็อกปุ่มควบคุมบนหน้าจอ"
-              title="ล็อกหน้าจอสัมผัส"
-              className="grid size-10 sm:size-8 shrink-0 place-items-center rounded-lg bg-panel/90 text-muted shadow-sm backdrop-blur-sm hover:bg-panel hover:text-foreground sm:hidden"
-            >
-              <Lock size={16} aria-hidden="true" />
-            </button>
             {!fullscreen && onClose && (
               <button type="button" onClick={onClose} aria-label="ปิดพรีวิว" title="ปิด (Esc)" className={topCloseBtn}>
                 <X size={18} aria-hidden="true" />
@@ -1272,7 +1326,7 @@ export function VideoPlayer({
           </motion.div>
         )}
 
-        {/* Center Transport Controls (Mobile shows -10s / Play|Pause / +10s when overlay is open; Desktop shows Play when paused) */}
+        {/* Center Transport Controls (Mobile shows dashed -10 / Play|Pause / dashed +10; Desktop shows Play when paused) */}
         {!isLoading && !failed && !locked && showOverlay && (
           <motion.div
             key="center-transport"
@@ -1280,22 +1334,22 @@ export function VideoPlayer({
             animate={{ opacity: 1, scale: 1 }}
             exit={reducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.14 }}
-            className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center gap-7 sm:gap-0"
+            className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center gap-10 sm:gap-0"
           >
             <button
               type="button"
               aria-label="ย้อนกลับ 10 วินาที"
               onClick={() => triggerDoubleTapSeek("left")}
-              className="pointer-events-auto grid size-11 place-items-center rounded-full bg-[#080d18]/65 text-white shadow-md backdrop-blur-sm active:scale-90 sm:hidden"
+              className="pointer-events-auto grid size-12 place-items-center rounded-full border border-dashed border-white/40 bg-[#080d18]/45 text-xs font-semibold text-white shadow-md backdrop-blur-xs active:scale-90 sm:hidden"
             >
-              <RotateCcw size={20} aria-hidden="true" />
+              -10
             </button>
 
             <button
               type="button"
               aria-label={playing ? "หยุดชั่วคราว" : "เล่นวิดีโอ"}
               onClick={togglePlay}
-              className={`pointer-events-auto grid size-14 place-items-center rounded-full bg-accent/90 text-white shadow-lg shadow-accent/30 backdrop-blur-sm active:scale-95 hover:bg-accent ${
+              className={`pointer-events-auto grid size-14 place-items-center rounded-full bg-accent text-white shadow-lg shadow-accent/35 backdrop-blur-sm active:scale-95 hover:bg-accent/90 ${
                 playing ? "sm:hidden" : ""
               }`}
             >
@@ -1310,9 +1364,9 @@ export function VideoPlayer({
               type="button"
               aria-label="ข้ามไปข้างหน้า 10 วินาที"
               onClick={() => triggerDoubleTapSeek("right")}
-              className="pointer-events-auto grid size-11 place-items-center rounded-full bg-[#080d18]/65 text-white shadow-md backdrop-blur-sm active:scale-90 sm:hidden"
+              className="pointer-events-auto grid size-12 place-items-center rounded-full border border-dashed border-white/40 bg-[#080d18]/45 text-xs font-semibold text-white shadow-md backdrop-blur-xs active:scale-90 sm:hidden"
             >
-              <RotateCw size={20} aria-hidden="true" />
+              +10
             </button>
           </motion.div>
         )}
@@ -1638,12 +1692,25 @@ export function VideoPlayer({
                 </button>
               )}
 
-              <button type="button" className={controlBtn} onClick={toggleFullscreen}
-                aria-label={fullscreen ? "ออกจากเต็มจอ" : "เต็มจอ"} title={fullscreen ? "ออกจากเต็มจอ (F)" : "เต็มจอ (F)"}>
-                {fullscreen ? <Minimize size={17} aria-hidden="true" /> : <Maximize size={17} aria-hidden="true" />}
-              </button>
+                <button type="button" className={controlBtn} onClick={toggleFullscreen}
+                  aria-label={fullscreen ? "ออกจากเต็มจอ" : "เต็มจอ"} title={fullscreen ? "ออกจากเต็มจอ (F)" : "เต็มจอ (F)"}>
+                  {fullscreen ? <Minimize size={17} aria-hidden="true" /> : <Maximize size={17} aria-hidden="true" />}
+                </button>
+              </div>
             </div>
           </div>
+        )}
+      </div>
+
+      {/* Mobile Footer Gesture Hint (matches image 3: ปัดซ้าย/ขวา ไปวิดีโอถัดไป · ปัดลงเพื่อย่อ) */}
+      {!fullscreen && (
+        <div
+          className="flex flex-1 flex-col items-center justify-end pb-[max(1.25rem,env(safe-area-inset-bottom))] text-center md:hidden"
+          onClick={onClose}
+        >
+          <p className="text-xs text-muted">
+            {totalSiblings > 1 ? "ปัดซ้าย/ขวา ไปวิดีโอถัดไป · ปัดลงเพื่อย่อ" : "ปัดลงเพื่อย่อ"}
+          </p>
         </div>
       )}
     </div>
