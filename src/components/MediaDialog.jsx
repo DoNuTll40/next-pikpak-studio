@@ -647,28 +647,29 @@ function ImagePreviewViewer({
         </div>
       </div>
 
-      {/* Mobile Native-Gallery Top Bar (matches Samsung/iOS Gallery: [<] ... [Rotate] [Fit/Zoom] [⋮]) */}
+      {/* Mobile Native-Gallery Top Bar — overlays the full-bleed canvas so zooming uses 100% of screen height */}
       <div
-        className={`flex shrink-0 items-center justify-between gap-2 bg-background/95 px-2 pt-[max(0.5rem,env(safe-area-inset-top))] pb-1.5 backdrop-blur-md transition-opacity duration-200 md:hidden ${
+        className={`absolute inset-x-0 top-0 z-30 flex items-center justify-between gap-2 bg-background/85 px-2 pt-[max(0.5rem,env(safe-area-inset-top))] pb-2 backdrop-blur-md transition-opacity duration-200 md:hidden ${
           chromeVisible ? "opacity-100" : "pointer-events-none opacity-0"
         }`}
       >
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="ย้อนกลับ"
-          className="grid size-11 shrink-0 place-items-center rounded-full text-foreground active:bg-foreground/10"
-        >
-          <ChevronLeft size={24} aria-hidden="true" />
-        </button>
-
-        <div className="min-w-0 flex-1 text-center">
-          <p className={`truncate text-xs font-medium text-foreground ${titleClass}`}>{item.name}</p>
-          {totalSiblings > 1 && (
-            <p className="text-[11px] text-muted tabular-nums">
-              {currentIndex + 1} / {totalSiblings}
-            </p>
-          )}
+        <div className="flex min-w-0 flex-1 items-center gap-1">
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="ย้อนกลับ"
+            className="grid size-10 shrink-0 place-items-center rounded-full text-foreground active:bg-foreground/10"
+          >
+            <ChevronLeft size={23} aria-hidden="true" />
+          </button>
+          <div className="min-w-0 flex-1">
+            <p className={`truncate text-xs font-medium text-foreground ${titleClass}`}>{item.name}</p>
+            {totalSiblings > 1 && (
+              <p className="text-[11px] leading-tight text-muted tabular-nums">
+                {currentIndex + 1} / {totalSiblings}
+              </p>
+            )}
+          </div>
         </div>
 
         <div className="relative flex shrink-0 items-center">
@@ -678,7 +679,7 @@ function ImagePreviewViewer({
             aria-label="หมุนรูปภาพ"
             className="grid size-10 place-items-center rounded-full text-foreground active:bg-foreground/10"
           >
-            <RotateCw size={20} aria-hidden="true" />
+            <RotateCw size={19} aria-hidden="true" />
           </button>
 
           <button
@@ -689,7 +690,7 @@ function ImagePreviewViewer({
               view.zoom > 1.05 ? "text-accent-text" : "text-foreground"
             }`}
           >
-            {view.zoom > 1.05 ? <ScanLine size={20} aria-hidden="true" /> : <ZoomIn size={20} aria-hidden="true" />}
+            {view.zoom > 1.05 ? <ScanLine size={19} aria-hidden="true" /> : <ZoomIn size={19} aria-hidden="true" />}
           </button>
 
           <button
@@ -699,7 +700,7 @@ function ImagePreviewViewer({
             aria-expanded={mobileMenuOpen}
             className="grid size-10 place-items-center rounded-full text-foreground active:bg-foreground/10"
           >
-            <MoreVertical size={20} aria-hidden="true" />
+            <MoreVertical size={19} aria-hidden="true" />
           </button>
 
           {mobileMenuOpen && (
@@ -833,7 +834,11 @@ function ImagePreviewViewer({
                 event.stopPropagation();
                 resetZoom();
               }}
-              className="absolute bottom-3 left-1/2 z-20 -translate-x-1/2 rounded-full border border-white/20 bg-[#080d18]/80 px-3 py-1 text-xs font-medium text-white shadow-md backdrop-blur-md active:scale-95"
+              className={`absolute left-1/2 z-20 -translate-x-1/2 rounded-full border border-white/20 bg-[#080d18]/80 px-3 py-1 text-xs font-medium text-white shadow-md backdrop-blur-md transition-[bottom] duration-200 active:scale-95 md:bottom-3 ${
+                chromeVisible
+                  ? "bottom-[calc(126px+env(safe-area-inset-bottom))]"
+                  : "bottom-[max(1.25rem,env(safe-area-inset-bottom))]"
+              }`}
             >
               ซูม {Math.round(view.zoom * 100)}% · แตะเพื่อรีเซ็ต
             </button>
@@ -1099,9 +1104,9 @@ function ImagePreviewViewer({
         </div>
       </footer>
 
-      {/* Mobile Native-Gallery Bottom Strip + Clean Icon Toolbar (matches Samsung/iOS Gallery reference) */}
+      {/* Mobile Native-Gallery Bottom Strip + Clean Icon Toolbar — overlays the full-bleed canvas */}
       <div
-        className={`shrink-0 bg-background/95 pt-2 pb-[max(0.65rem,env(safe-area-inset-bottom))] backdrop-blur-md transition-opacity duration-200 md:hidden ${
+        className={`absolute inset-x-0 bottom-0 z-30 bg-background/85 pt-2 pb-[max(0.65rem,env(safe-area-inset-bottom))] backdrop-blur-md transition-opacity duration-200 md:hidden ${
           chromeVisible ? "opacity-100" : "pointer-events-none opacity-0"
         }`}
       >
