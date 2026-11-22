@@ -8,7 +8,7 @@ import { catalogFontClass, formatStudioDate } from "@/lib/catalog";
 import { useStudioPreferences } from "@/providers/StudioProvider";
 import { VideoPlayer } from "./VideoPlayer";
 
-const topActionButton = "grid size-8 shrink-0 place-items-center rounded-lg bg-panel/90 text-muted shadow-sm backdrop-blur-sm hover:bg-panel hover:text-foreground";
+const topActionButton = "grid size-10 sm:size-8 shrink-0 place-items-center rounded-lg bg-panel/90 text-muted shadow-sm backdrop-blur-sm hover:bg-panel hover:text-foreground";
 
 export function MediaDialog({ item, onClose }) {
   const dialog = useRef(null);
@@ -47,7 +47,7 @@ export function MediaDialog({ item, onClose }) {
         requestClose();
       }}
       aria-labelledby="preview-title"
-      className="fixed inset-0 m-0 size-full max-h-none max-w-none items-center justify-center overflow-hidden border-0 bg-transparent p-4 text-foreground backdrop:bg-transparent open:flex"
+      className="fixed inset-0 m-0 size-full max-h-none max-w-none items-center justify-center overflow-hidden border-0 bg-transparent p-0 sm:p-4 text-foreground backdrop:bg-transparent open:flex"
     >
       <AnimatePresence onExitComplete={() => dialog.current?.close()}>
         {visible && (
@@ -73,7 +73,7 @@ export function MediaDialog({ item, onClose }) {
             transition={reducedMotion
               ? { duration: 0.12 }
               : { type: "spring", stiffness: 380, damping: 32, mass: 0.8 }}
-            className="relative z-1 max-h-[calc(100dvh-32px)] w-[min(1040px,calc(100vw-32px))] overflow-hidden rounded-2xl bg-transparent shadow-[0_16px_48px_rgba(8,13,24,0.32)]"
+            className="relative z-1 max-h-dvh sm:max-h-[calc(100dvh-32px)] w-full sm:w-[min(1040px,calc(100vw-32px))] overflow-hidden rounded-none sm:rounded-2xl bg-transparent shadow-[0_16px_48px_rgba(8,13,24,0.32)]"
           >
             <MediaContent key={reloadKey} item={item} result={result} fileInfo={fileInfo}
               onReload={() => setReloadKey(prev => prev + 1)} onClose={requestClose} />
@@ -113,13 +113,13 @@ function CopyJsonButton({ data }) {
   return (
     <button type="button" onClick={copy}
       title="คัดลอก JSON ของ file_info ทั้งหมด"
-      className={`inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium shadow-sm backdrop-blur-sm ${
+      className={`inline-flex h-10 sm:h-8 shrink-0 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium shadow-sm backdrop-blur-sm ${
         copied
           ? "bg-panel text-success"
           : "bg-panel/90 text-foreground hover:bg-panel hover:text-accent-text"
       }`}>
       {copied ? <Check size={14} aria-hidden="true" /> : <Copy size={14} aria-hidden="true" />}
-      <span>{copied ? "คัดลอกแล้ว" : "คัดลอก JSON"}</span>
+      <span className="hidden sm:inline">{copied ? "คัดลอกแล้ว" : "คัดลอก JSON"}</span>
     </button>
   );
 }
