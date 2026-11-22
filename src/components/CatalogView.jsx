@@ -52,7 +52,7 @@ export function CatalogView({ path, folders, items }) {
               onClick={() => setTreeOpen(true)}><ListTree size={18} /> โครงสร้างโฟลเดอร์</button>
           }
         >
-          <div className="mt-[18px] mb-[23px] flex flex-wrap items-stretch gap-2 md:mt-6 md:mb-[29px] md:flex-nowrap md:gap-2.5">
+          <div className="mt-[18px] mb-2 flex flex-wrap items-stretch gap-2 md:mt-5 md:mb-3 md:flex-nowrap md:gap-2.5">
             <label className={`${field} flex flex-1 basis-full items-center gap-2.5 px-3 text-muted focus-within:border-accent-text md:basis-auto [&>svg]:shrink-0`}><Search size={18} /><input className="w-full min-w-0 text-foreground outline-none!" type="search" aria-label="ค้นหารายการในโฟลเดอร์นี้"
               placeholder="ค้นหาในหน้านี้" value={query} onChange={event => setQuery(event.target.value)} /></label>
             <Select label="กรองตามข้อมูลไฟล์" value={filter} onChange={setFilter}
@@ -64,7 +64,7 @@ export function CatalogView({ path, folders, items }) {
           </div>
         </StudioPageHeader>
       }>
-        <section className={!located.length && !unresolved.length ? "flex flex-1 flex-col" : undefined}
+        <section className={!located.length && !unresolved.length ? "mt-4 flex flex-1 flex-col" : "mt-4"}
           aria-labelledby="items-heading">
           <div className={sectionHeading}><h2 className={subtitle} id="items-heading">{current ? "รายการ" : "แชร์หลัก"}</h2>
             <span className="text-xs text-muted" aria-live="polite">{located.length} รายการ</span></div>
