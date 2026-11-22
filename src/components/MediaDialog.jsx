@@ -16,10 +16,12 @@ import {
   LoaderCircle,
   Maximize,
   Minimize,
+  MoreVertical,
   RefreshCw,
   RotateCcw,
   RotateCw,
   ScanLine,
+  Share2,
   X,
   ZoomIn,
   ZoomOut,
@@ -245,11 +247,15 @@ function ImagePreviewViewer({
   const [naturalDim, setNaturalDim] = useState({ id: null, width: 0, height: 0 });
   const [stripOpen, setStripOpen] = useState(true);
   const [infoOpen, setInfoOpen] = useState(false);
+  const [chromeVisible, setChromeVisible] = useState(true);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const [toast, setToast] = useState("");
   const shellRef = useRef(null);
   const stageRef = useRef(null);
   const stripRef = useRef(null);
+  const mobileStripRef = useRef(null);
+  const singleTapTimerRef = useRef(null);
   const toastTimer = useRef(null);
   const lastTapRef = useRef({ time: 0, x: 0, y: 0 });
   const pointersRef = useRef(new Map());
@@ -274,9 +280,12 @@ function ImagePreviewViewer({
     setView(INITIAL_VIEW);
   }
 
-  useEffect(() => () => clearTimeout(toastTimer.current), []);
+  useEffect(() => () => {
+    clearTimeout(toastTimer.current);
+    clearTimeout(singleTapTimerRef.current);
+  }, []);
 
-  // Scroll the active thumbnail into view inside the desktop filmstrip
+  // Scroll the active thumbnail into view inside both desktop & mobile filmstrips
   useEffect(() => {
     if (!stripOpen) return;
     stripRef.current?.querySelector('[aria-current="true"]')?.scrollIntoView({
@@ -284,7 +293,12 @@ function ImagePreviewViewer({
       inline: "center",
       behavior: "smooth",
     });
-  }, [item.id, stripOpen]);
+    mobileStripRef.current?.querySelector('[aria-current="true"]')?.scrollIntoView({
+      block: "nearest",
+      inline: "center",
+      behavior: "smooth",
+    });
+  }, [item.id, stripOpen, chromeVisible]);
 
   useEffect(() => {
     function onFsChange() {
@@ -478,10 +492,12 @@ function ImagePreviewViewer({
     const dt = performance.now() - g.downTime;
 
     // Double-tap / double-click at focal point -> toggle 2.5x zoom or reset to 1x
+    // Single tap on mobile toggles immersive chrome (like Samsung/iOS Gallery)
     if (!g.moved && Math.abs(dx) < 16 && Math.abs(dy) < 16 && dt < 280) {
       const now = performance.now();
       const last = lastTapRef.current;
       if (now - last.time <= 320 && Math.hypot(event.clientX - last.x, event.clientY - last.y) < 36) {
+        clearTimeout(singleTapTimerRef.current);
         lastTapRef.current = { time: 0, x: 0, y: 0 };
         if (view.zoom > 1.05) {
           resetZoom();
@@ -491,6 +507,13 @@ function ImagePreviewViewer({
         return;
       }
       lastTapRef.current = { time: now, x: event.clientX, y: event.clientY };
+      if (event.pointerType === "touch") {
+        clearTimeout(singleTapTimerRef.current);
+        singleTapTimerRef.current = setTimeout(() => {
+          setMobileMenuOpen(false);
+          setChromeVisible(prev => !prev);
+        }, 250);
+      }
       return;
     }
 
@@ -559,7 +582,7 @@ function ImagePreviewViewer({
           toggleFullscreen();
         }
       }}
-      className={`relative flex size-full flex-col justify-between bg-[#080d18] text-white select-none focus:outline-none! ${
+      className={`relative flex size-full flex-col justify-between bg-background text-foreground md:bg-[#080d18] md:text-white select-none focus:outline-none! ${
         fullscreen ? "h-dvh w-dvw" : "md:h-[min(86dvh,820px)]"
       }`}
     >
@@ -589,30 +612,109 @@ function ImagePreviewViewer({
         </div>
       </div>
 
-      {/* Mobile Top Bar: [X] | [3 / 223] | [(i)] */}
-      <div className="flex shrink-0 items-center justify-between px-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-2 md:hidden">
+      {/* Mobile Native-Gallery Top Bar (matches Samsung/iOS Gallery: [<] ... [Rotate] [Fit/Zoom] [⋮]) */}
+      <div
+        className={`flex shrink-0 items-center justify-between gap-2 bg-background/95 px-2 pt-[max(0.5rem,env(safe-area-inset-top))] pb-1.5 backdrop-blur-md transition-opacity duration-200 md:hidden ${
+          chromeVisible ? "opacity-100" : "pointer-events-none opacity-0"
+        }`}
+      >
         <button
           type="button"
           onClick={onClose}
-          aria-label="ปิดพรีวิว"
-          className="grid size-10 place-items-center rounded-full text-white/90 active:bg-white/15"
+          aria-label="ย้อนกลับ"
+          className="grid size-11 shrink-0 place-items-center rounded-full text-foreground active:bg-foreground/10"
         >
-          <X size={20} aria-hidden="true" />
+          <ChevronLeft size={24} aria-hidden="true" />
         </button>
-        <span className="text-sm font-semibold tracking-wide text-white/95 tabular-nums">
-          {currentIndex + 1} / {totalSiblings}
-        </span>
-        <button
-          type="button"
-          onClick={() => setInfoOpen(prev => !prev)}
-          aria-label="ข้อมูลไฟล์"
-          aria-expanded={infoOpen}
-          className={`grid size-10 place-items-center rounded-full transition-colors ${
-            infoOpen ? "bg-accent/25 text-accent-text" : "text-white/90 active:bg-white/15"
-          }`}
-        >
-          <Info size={20} aria-hidden="true" />
-        </button>
+
+        <div className="min-w-0 flex-1 text-center">
+          <p className={`truncate text-xs font-medium text-foreground ${titleClass}`}>{item.name}</p>
+          {totalSiblings > 1 && (
+            <p className="text-[11px] text-muted tabular-nums">
+              {currentIndex + 1} / {totalSiblings}
+            </p>
+          )}
+        </div>
+
+        <div className="relative flex shrink-0 items-center">
+          <button
+            type="button"
+            onClick={() => setView(prev => ({ ...prev, angle: prev.angle + 90, x: 0, y: 0 }))}
+            aria-label="หมุนรูปภาพ"
+            className="grid size-10 place-items-center rounded-full text-foreground active:bg-foreground/10"
+          >
+            <RotateCw size={20} aria-hidden="true" />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => (view.zoom > 1.05 ? resetZoom() : zoomTo(2.5))}
+            aria-label={view.zoom > 1.05 ? "พอดีหน้าจอ" : "ซูมภาพ"}
+            className={`grid size-10 place-items-center rounded-full active:bg-foreground/10 ${
+              view.zoom > 1.05 ? "text-accent-text" : "text-foreground"
+            }`}
+          >
+            {view.zoom > 1.05 ? <ScanLine size={20} aria-hidden="true" /> : <ZoomIn size={20} aria-hidden="true" />}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen(prev => !prev)}
+            aria-label="ตัวเลือกเพิ่มเติม"
+            aria-expanded={mobileMenuOpen}
+            className="grid size-10 place-items-center rounded-full text-foreground active:bg-foreground/10"
+          >
+            <MoreVertical size={20} aria-hidden="true" />
+          </button>
+
+          {mobileMenuOpen && (
+            <div
+              role="menu"
+              className="studio-dropdown absolute top-full right-1 z-40 mt-1 w-48 p-1.5 text-left"
+              onClick={event => event.stopPropagation()}
+            >
+              <button
+                type="button"
+                role="menuitem"
+                disabled={!displayUrl}
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  if (displayUrl) copyText(displayUrl, "คัดลอกลิงก์รูปภาพแล้ว");
+                }}
+                className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs text-foreground hover:bg-accent/10 disabled:opacity-40"
+              >
+                <Link2 size={15} className="text-muted" aria-hidden="true" />
+                <span>คัดลอกลิงก์รูป</span>
+              </button>
+              {fileInfo && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    copyText(JSON.stringify(fileInfo, null, 2), "คัดลอกข้อมูล JSON แล้ว");
+                  }}
+                  className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs text-foreground hover:bg-accent/10"
+                >
+                  <Braces size={15} className="text-muted" aria-hidden="true" />
+                  <span>คัดลอกข้อมูล JSON</span>
+                </button>
+              )}
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  resetZoom();
+                }}
+                className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs text-foreground hover:bg-accent/10"
+              >
+                <ScanLine size={15} className="text-muted" aria-hidden="true" />
+                <span>รีเซ็ตการซูม / หมุน</span>
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Toast Notification */}
@@ -629,7 +731,7 @@ function ImagePreviewViewer({
       <div className="relative flex min-h-0 flex-1 overflow-hidden">
         <div
           ref={stageRef}
-          className={`relative flex min-h-0 flex-1 items-center justify-center overflow-hidden touch-none bg-[#0b101d] ${
+          className={`relative flex min-h-0 flex-1 items-center justify-center overflow-hidden touch-none bg-background md:bg-[#0b101d] ${
             view.zoom > 1.02 ? (isInteracting ? "cursor-grabbing" : "cursor-grab") : "cursor-zoom-in"
           }`}
           onPointerDown={handlePointerDown}
@@ -962,26 +1064,64 @@ function ImagePreviewViewer({
         </div>
       </footer>
 
-      {/* Mobile Bottom Sheet: Filename + Gesture Hint + Action Bar */}
-      <div className="shrink-0 bg-[#080d18] px-4 pt-3 pb-[max(0.9rem,env(safe-area-inset-bottom))] md:hidden">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <p className={`truncate text-sm font-semibold text-white ${titleClass}`} title={item.name}>
-            {item.name}
-          </p>
-          <span className="text-[11px] text-muted">
-            ปัดซ้าย/ขวาเพื่อเปลี่ยนไฟล์ · ดับเบิลแตะเพื่อซูม
-          </span>
-        </div>
+      {/* Mobile Native-Gallery Bottom Strip + Clean Icon Toolbar (matches Samsung/iOS Gallery reference) */}
+      <div
+        className={`shrink-0 bg-background/95 pt-2 pb-[max(0.65rem,env(safe-area-inset-bottom))] backdrop-blur-md transition-opacity duration-200 md:hidden ${
+          chromeVisible ? "opacity-100" : "pointer-events-none opacity-0"
+        }`}
+      >
+        {/* Horizontal Thumbnail Scrubber Strip */}
+        {totalSiblings > 1 && (
+          <div
+            ref={mobileStripRef}
+            aria-label="ภาพย่อในโฟลเดอร์"
+            className="flex items-center gap-1 overflow-x-auto px-[calc(50vw-24px)] pb-2.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
+            {siblings.map(photo => {
+              const active = photo.id === item.id;
+              return (
+                <button
+                  key={photo.id}
+                  type="button"
+                  aria-label={photo.name}
+                  aria-current={active}
+                  onClick={() => onSelectItem?.(photo)}
+                  className={`relative grid h-11 shrink-0 place-items-center overflow-hidden rounded-[5px] transition-all duration-150 ${
+                    active
+                      ? "mx-1.5 w-11 ring-2 ring-accent shadow-sm"
+                      : "w-9 opacity-65 active:opacity-100"
+                  }`}
+                >
+                  {photo.thumbnail ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={photo.thumbnail}
+                      alt=""
+                      loading="lazy"
+                      referrerPolicy="no-referrer"
+                      className="size-full object-cover"
+                    />
+                  ) : (
+                    <span className="grid size-full place-items-center bg-field">
+                      <ImageIcon size={15} className="text-muted" aria-hidden="true" />
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
 
-        <div className="mt-3.5 grid grid-cols-4 gap-2 border-t border-border/50 pt-3">
+        {/* Clean Minimal Bottom Icon Bar (matches Samsung Gallery: Link / Download / Info / Share / JSON) */}
+        <div className="grid grid-cols-5 items-center border-t border-border/50 px-2 pt-1.5">
           <button
             type="button"
             disabled={!displayUrl}
+            aria-label="คัดลอกลิงก์"
             onClick={() => displayUrl && copyText(displayUrl, "คัดลอกลิงก์รูปภาพแล้ว")}
-            className="flex flex-col items-center justify-center gap-1 rounded-xl py-1.5 text-[11px] text-white/90 disabled:opacity-40 active:bg-white/10"
+            className="grid h-11 place-items-center rounded-xl text-foreground disabled:opacity-35 active:bg-foreground/10"
           >
-            <Link2 size={18} className="text-muted" aria-hidden="true" />
-            <span>คัดลอกลิงก์</span>
+            <Link2 size={21} aria-hidden="true" />
           </button>
 
           <a
@@ -989,6 +1129,7 @@ function ImagePreviewViewer({
             download={item.name}
             target="_blank"
             rel="noopener noreferrer"
+            aria-label="ดาวน์โหลดรูปภาพ"
             onClick={event => {
               if (!displayUrl) {
                 event.preventDefault();
@@ -996,31 +1137,52 @@ function ImagePreviewViewer({
               }
               notify("กำลังเปิดดาวน์โหลดรูปภาพ");
             }}
-            className={`flex flex-col items-center justify-center gap-1 rounded-xl py-1.5 text-[11px] text-white/90 active:bg-white/10 ${
-              !displayUrl ? "pointer-events-none opacity-40" : ""
+            className={`grid h-11 place-items-center rounded-xl text-foreground active:bg-foreground/10 ${
+              !displayUrl ? "pointer-events-none opacity-35" : ""
             }`}
           >
-            <Download size={18} className="text-muted" aria-hidden="true" />
-            <span>ดาวน์โหลด</span>
+            <Download size={21} aria-hidden="true" />
           </a>
 
           <button
             type="button"
-            disabled={!fileInfo}
-            onClick={() => fileInfo && copyText(JSON.stringify(fileInfo, null, 2), "คัดลอกข้อมูล JSON แล้ว")}
-            className="flex flex-col items-center justify-center gap-1 rounded-xl py-1.5 text-[11px] text-white/90 disabled:opacity-40 active:bg-white/10"
+            aria-label="ข้อมูลภาพ"
+            aria-expanded={infoOpen}
+            onClick={() => setInfoOpen(prev => !prev)}
+            className={`grid h-11 place-items-center rounded-xl active:bg-foreground/10 ${
+              infoOpen ? "text-accent-text" : "text-foreground"
+            }`}
           >
-            <Braces size={18} className="text-muted" aria-hidden="true" />
-            <span>คัดลอก JSON</span>
+            <Info size={21} aria-hidden="true" />
           </button>
 
           <button
             type="button"
-            onClick={onClose}
-            className="flex flex-col items-center justify-center gap-1 rounded-xl py-1.5 text-[11px] text-[#f87171] active:bg-white/10"
+            disabled={!displayUrl}
+            aria-label="แชร์รูปภาพ"
+            onClick={async () => {
+              if (!displayUrl) return;
+              if (navigator.share) {
+                try {
+                  await navigator.share({ title: item.name, url: displayUrl });
+                  return;
+                } catch {}
+              }
+              copyText(displayUrl, "คัดลอกลิงก์สำหรับแชร์แล้ว");
+            }}
+            className="grid h-11 place-items-center rounded-xl text-foreground disabled:opacity-35 active:bg-foreground/10"
           >
-            <X size={18} aria-hidden="true" />
-            <span>ปิดหน้าต่าง</span>
+            <Share2 size={20} aria-hidden="true" />
+          </button>
+
+          <button
+            type="button"
+            disabled={!fileInfo}
+            aria-label="คัดลอก JSON"
+            onClick={() => fileInfo && copyText(JSON.stringify(fileInfo, null, 2), "คัดลอกข้อมูล JSON แล้ว")}
+            className="grid h-11 place-items-center rounded-xl text-foreground disabled:opacity-35 active:bg-foreground/10"
+          >
+            <Braces size={20} aria-hidden="true" />
           </button>
         </div>
       </div>
