@@ -67,7 +67,7 @@ export function CatalogItem({ item, selected, onSelect, onClear, onSelectAll, on
         )}
         {isFolder ? (
           <>
-            <FolderArtwork thumbnail={item.thumbnail} hasItems={item.count > 0} />
+            <FolderArtwork thumbnail={item.thumbnail} />
             <FolderLoadingIndicator />
           </>
         ) : (
@@ -94,7 +94,7 @@ export function CatalogItem({ item, selected, onSelect, onClear, onSelectAll, on
           {item.name}
         </span>
         <span className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-[5px] text-xs text-muted md:justify-between">
-          {isFolder ? <><span>{item.count} รายการ</span><ScanStatus status={item.status} /></> :
+          {isFolder ? <><span>{item.count > 0 ? `${item.count} รายการ` : "โฟลเดอร์"}</span><ScanStatus status={item.status} /></> :
             <><span>{item.hasInfo ? "เคยเปิดใน Desktop" : "ยังไม่มีประวัติเปิด"}</span>
               {isShortcut ? <span>ทางลัดเว็บ</span> : item.kind !== "file" && <span>เปิดพรีวิว</span>}</>}
         </span>
