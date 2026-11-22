@@ -59,9 +59,12 @@ function formatTime(seconds) {
 
 function shortQualityLabel(variant) {
   if (!variant) return "อัตโนมัติ";
+  if (variant.original || /\boriginal\b|ต้นฉบับ/i.test(variant.label ?? "")) {
+    return /สตรีม/i.test(variant.label ?? "") ? "ต้นฉบับ (สตรีม)" : "ต้นฉบับ";
+  }
   const fromDim = resolutionLabel(variant.width, variant.height);
   if (fromDim) return fromDim;
-  const match = variant.label.match(/\b(\d{3,4}p|[248]K)\b/i)?.[1];
+  const match = variant.label?.match(/\b(\d{3,4}p|[248]K)\b/i)?.[1];
   return match ?? variant.label;
 }
 
@@ -1741,7 +1744,11 @@ export function VideoPlayer({
                               onClick={() => changeQuality(index)}
                               className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-start text-xs hover:bg-accent/10 ${index === selected ? "bg-accent/15 font-medium text-accent-text" : "text-foreground"}`}>
                               <Check size={13} className={index === selected ? "shrink-0" : "invisible shrink-0"} aria-hidden="true" />
-                              <span className="min-w-0 flex-1 truncate">{variant.label}</span>
+                              <span className="min-w-0 flex-1 truncate">
+                                {variant.original || /\boriginal\b/i.test(variant.label ?? "")
+                                  ? (/สตรีม/i.test(variant.label ?? "") ? "ต้นฉบับ (สตรีม)" : "ต้นฉบับ")
+                                  : variant.label}
+                              </span>
                               {variant.detail && <span className="shrink-0 text-[11px] text-muted tabular-nums">{variant.detail}</span>}
                             </button>
                           ))}

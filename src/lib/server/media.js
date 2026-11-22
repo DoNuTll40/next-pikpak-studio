@@ -119,9 +119,11 @@ export function mediaPreview(kind, file) {
     const height = dimension(media.video?.height);
     const videoType = labelText(media.video?.video_type).toLowerCase();
     const hls = /\.m3u8(?:[?#]|$)/i.test(url);
-    const label = media.is_origin === true
+    const rawName = labelText(media.resolution_name) || labelText(media.media_name);
+    const isOrigin = media.is_origin === true || /\boriginal\b/i.test(rawName);
+    const label = isOrigin
       ? (original || hls ? "ต้นฉบับ (สตรีม)" : "ต้นฉบับ")
-      : resolutionLabel(width, height) || labelText(media.resolution_name) || labelText(media.media_name) || "สตรีม";
+      : resolutionLabel(width, height) || rawName || "สตรีม";
     const mpegts = videoType === "mpegts" || /\.(?:ts|m2ts|mts)(?:[?#]|$)/i.test(url);
     const codec = labelText(media.video?.video_codec).toLowerCase();
     const audioCodec = labelText(media.video?.audio_codec).toLowerCase();
@@ -130,9 +132,9 @@ export function mediaPreview(kind, file) {
     const hdr = labelText(media.video?.hdr_type);
     const mediaId = labelText(media.media_id);
     const duration = dimension(media.video?.duration) || fallbackDuration;
-    const size = urlFileSize(url) || (media.is_origin === true ? dimension(file.size) : 0);
+    const size = urlFileSize(url) || (isOrigin ? dimension(file.size) : 0);
     const expiresAt = urlExpiresAt(url, media.link);
-    return [source(url, label, width, height, media.is_origin === true, {
+    return [source(url, label, width, height, isOrigin, {
       mpegts, codec, audioCodec, fps, bitrate, videoType, hdr, mediaId, duration, size, expiresAt,
     })];
   }).sort((a, b) =>
