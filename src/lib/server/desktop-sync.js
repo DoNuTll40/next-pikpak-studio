@@ -104,7 +104,9 @@ export async function saveSyncBatch(userId, items) {
         file_info = coalesce(excluded.file_info, target.file_info),
         thumbnail_url = coalesce(excluded.thumbnail_url, target.thumbnail_url),
         share_root = target.share_root OR excluded.share_root
-      WHERE excluded.source_modified_at IS NULL OR target.source_modified_at IS NULL
+      WHERE excluded.file_info IS NOT NULL
+         OR excluded.thumbnail_url IS NOT NULL
+         OR excluded.source_modified_at IS NULL OR target.source_modified_at IS NULL
          OR excluded.source_modified_at >= target.source_modified_at
     `, [userId, JSON.stringify(items)]);
     await client.query("COMMIT");
