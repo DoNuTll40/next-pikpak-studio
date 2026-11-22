@@ -107,7 +107,7 @@ export function CatalogItem({ item, now = null, selected, onSelect, onClear, onS
                   </span>
                 </span>
                 {durationLabel && (
-                  <span className="pointer-events-none absolute right-1.5 bottom-1.5 z-10 rounded-md bg-black/75 px-1.5 py-0.5 text-[11px] leading-tight font-medium text-white tabular-nums backdrop-blur-[2px] list-view:hidden">
+                  <span className="pointer-events-none absolute right-2 bottom-2 z-10 rounded-md bg-[#080d18]/80 px-1.5 py-0.5 text-[11px] leading-tight font-semibold text-white tabular-nums shadow-sm backdrop-blur-[2px] list-view:hidden">
                     {durationLabel}
                   </span>
                 )}
@@ -116,38 +116,59 @@ export function CatalogItem({ item, now = null, selected, onSelect, onClear, onS
           </>
         )}
       </span>
-      <span className={`min-w-0 pt-[11px] pb-[5px] list-view:flex-1 list-view:px-0 list-view:py-[3px] ${
+      <span className={`min-w-0 pt-2.5 pb-1 list-view:flex-1 list-view:px-0 list-view:py-[3px] ${
         mobilePhotoTile ? "mobile:grid-view:hidden" : ""
       }`}>
-        <span className={`line-clamp-1 text-[.96rem] font-medium ${catalogFontClass(item.name) ?? ""}`} title={item.name}>
+        <span className={`line-clamp-1 text-[.95rem] font-medium ${catalogFontClass(item.name) ?? ""}`} title={item.name}>
           {item.name}
         </span>
-        <span className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-[5px] text-xs text-muted desktop:justify-between">
+        <span className="mt-1.5 flex items-center justify-between gap-2 text-xs text-muted">
           {isFolder ? (
             <>
-              <span>{item.count > 0 ? `${item.count} รายการ` : "โฟลเดอร์"}</span>
+              <span className="truncate">{item.count > 0 ? `${item.count} รายการ` : "โฟลเดอร์"}</span>
               <ScanStatus status={item.status} />
             </>
           ) : (
             <>
-              <span className="inline-flex min-w-0 flex-wrap items-center gap-x-1.5 tabular-nums">
-                {durationLabel && <span className="hidden list-view:inline font-medium text-foreground/85">{durationLabel}</span>}
-                {durationLabel && sizeLabel && <span className="hidden list-view:inline opacity-60">·</span>}
-                {sizeLabel && <span className="font-medium text-foreground/80">{sizeLabel}</span>}
-                {sizeLabel && <span className="opacity-60">·</span>}
-                <span>{item.hasInfo ? "เคยเปิดใน Desktop" : "ยังไม่มีประวัติเปิด"}</span>
+              <span className="inline-flex min-w-0 items-center gap-1.5 truncate tabular-nums">
+                {durationLabel && <span className="hidden list-view:inline font-medium text-foreground/90">{durationLabel}</span>}
+                {durationLabel && sizeLabel && <span className="hidden list-view:inline opacity-50">·</span>}
+                {sizeLabel ? (
+                  <span className="font-medium text-foreground/80">{sizeLabel}</span>
+                ) : (
+                  <span className="truncate">{item.hasInfo ? "พร้อมเปิด" : "ยังไม่เปิด"}</span>
+                )}
               </span>
-              {isShortcut ? <span>ทางลัดเว็บ</span> : item.kind !== "file" && <span className="mobile:grid-view:hidden shrink-0">เปิดพรีวิว</span>}
+              {isShortcut ? (
+                <span className="shrink-0 text-[11px]">ทางลัดเว็บ</span>
+              ) : item.kind !== "file" ? (
+                <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-field px-2 py-0.5 text-[11px] leading-tight text-muted">
+                  <span
+                    aria-hidden="true"
+                    className={`size-1.5 shrink-0 rounded-full ${
+                      expiry?.state === "expired"
+                        ? "bg-rose-500"
+                        : item.hasInfo
+                          ? "bg-success"
+                          : "bg-muted/50"
+                    }`}
+                  />
+                  <span>{expiry?.state === "expired" ? "หมดอายุ" : item.hasInfo ? "พร้อมเปิด" : "ยังไม่เปิด"}</span>
+                </span>
+              ) : null}
             </>
           )}
         </span>
         {expiry && (
           <span
             title={isFolder ? `ลิงก์ที่ใกล้หมดอายุที่สุดในโฟลเดอร์นี้ (${expiry.title})` : expiry.title}
-            className={`mt-1.5 flex items-center gap-1 text-[11px] leading-tight tabular-nums ${expiryTone}`}
+            className="mt-1.5 flex items-center justify-between gap-2 text-[11px] leading-tight tabular-nums"
           >
-            <Clock size={11} className="shrink-0 opacity-85" aria-hidden="true" />
-            <span className="truncate">{expiry.label}</span>
+            <span className={`inline-flex min-w-0 items-center gap-1 ${expiryTone}`}>
+              <Clock size={11} className="shrink-0 opacity-85" aria-hidden="true" />
+              <span className="truncate">{expiry.compactLabel}</span>
+            </span>
+            <span className="hidden shrink-0 text-muted/80 desktop:inline">{expiry.shortDate}</span>
           </span>
         )}
       </span>

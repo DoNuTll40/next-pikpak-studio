@@ -1894,7 +1894,7 @@ export function VideoPlayer({
                           <Play size={16} className="ml-0.5 fill-current" />
                         </span>
                         {entryDuration && (
-                          <span className="pointer-events-none absolute right-1.5 bottom-1.5 z-10 rounded-md bg-black/75 px-1.5 py-0.5 text-[10px] leading-tight font-medium text-white tabular-nums">
+                          <span className="pointer-events-none absolute right-2 bottom-2 z-10 rounded-md bg-[#080d18]/80 px-1.5 py-0.5 text-[10px] leading-tight font-semibold text-white tabular-nums shadow-sm backdrop-blur-[2px]">
                             {entryDuration}
                           </span>
                         )}

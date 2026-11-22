@@ -60,6 +60,7 @@ export function formatExpiryInfo(expiresAt, now = null) {
   if (now === null) {
     return {
       state: "neutral",
+      shortDate,
       label: `หมดอายุ ${shortDate}`,
       compactLabel: `หมด ${shortDate}`,
       title: `ลิงก์หมดอายุ ${fullDate}`,
@@ -69,6 +70,7 @@ export function formatExpiryInfo(expiresAt, now = null) {
   if (diff <= 0) {
     return {
       state: "expired",
+      shortDate,
       label: `หมดอายุแล้ว · ${shortDate}`,
       compactLabel: "หมดอายุแล้ว",
       title: `ลิงก์หมดอายุแล้วเมื่อ ${fullDate}`,
@@ -78,6 +80,7 @@ export function formatExpiryInfo(expiresAt, now = null) {
   if (mins < 60) {
     return {
       state: "soon",
+      shortDate,
       label: `เหลือ ${mins} นาที · ${shortDate}`,
       compactLabel: `เหลือ ${mins} น.`,
       title: `ลิงก์หมดอายุ ${fullDate}`,
@@ -87,6 +90,7 @@ export function formatExpiryInfo(expiresAt, now = null) {
   if (hours < 24) {
     return {
       state: hours < 6 ? "soon" : "ok",
+      shortDate,
       label: `เหลือ ${hours} ชม. · ${shortDate}`,
       compactLabel: `เหลือ ${hours} ชม.`,
       title: `ลิงก์หมดอายุ ${fullDate}`,
@@ -95,6 +99,7 @@ export function formatExpiryInfo(expiresAt, now = null) {
   const days = Math.floor(hours / 24);
   return {
     state: "ok",
+    shortDate,
     label: `เหลือ ${days} วัน · ${shortDate}`,
     compactLabel: `เหลือ ${days} วัน`,
     title: `ลิงก์หมดอายุ ${fullDate}`,

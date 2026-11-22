@@ -1,4 +1,4 @@
-const CACHE_NAME = "pikpak-studio-static-v1";
+const CACHE_NAME = "pikpak-studio-static-v2";
 const STATIC_ASSETS = [
   "/studio.svg",
   "/icon-192x192.png",
@@ -30,6 +30,8 @@ self.addEventListener("fetch", event => {
 
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
+  // Never cache local dev server assets (Turbopack reuses chunk filenames on HMR)
+  if (url.hostname === "localhost" || url.hostname === "127.0.0.1") return;
   if (
     url.pathname.startsWith("/api/") ||
     url.pathname.startsWith("/desktop-auth") ||
