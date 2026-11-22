@@ -12,6 +12,8 @@ export const DESKTOP_RELEASE = {
     `/app/release/${encodeURIComponent("PikPak Studio_0.2.0_x64-setup.exe")}`,
   githubReleaseUrl:
     "https://github.com/DoNuTll40/next-pikpak-studio/releases/tag/v0.2.0",
+  githubAssetUrl:
+    "https://github.com/DoNuTll40/next-pikpak-studio/releases/download/v0.2.0/PikPak.Studio_0.2.0_x64-setup.exe",
   highlights: [
     "ล็อกอิน Cloud Sync ผ่านเบราว์เซอร์หลักของเครื่อง (PKCE S256 + Loopback)",
     "ระบบสแกนโฟลเดอร์ย่อยอัตโนมัติพร้อมตรวจสอบและรีเฟรชลิงก์ที่หมดอายุ",
