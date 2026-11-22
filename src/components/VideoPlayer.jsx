@@ -115,6 +115,7 @@ export function VideoPlayer({
   const trackRef = useRef(null);
   const volumeTrackRef = useRef(null);
   const menuRef = useRef(null);
+  const mobileSheetRef = useRef(null);
   const contextMenuRef = useRef(null);
   const dockHoverRef = useRef(false);
   const hideTimerRef = useRef(null);
@@ -422,7 +423,13 @@ export function VideoPlayer({
   useEffect(() => {
     if (!openMenu) return;
     function closeOutside(event) {
-      if (!menuRef.current?.contains(event.target)) setOpenMenu(null);
+      if (
+        !menuRef.current?.contains(event.target) &&
+        !mobileSheetRef.current?.contains(event.target) &&
+        !event.target.closest?.("[data-player-menu-trigger]")
+      ) {
+        setOpenMenu(null);
+      }
     }
     document.addEventListener("pointerdown", closeOutside);
     return () => document.removeEventListener("pointerdown", closeOutside);
@@ -1148,6 +1155,7 @@ export function VideoPlayer({
 
             <button
               type="button"
+              data-player-menu-trigger=""
               onClick={() => setOpenMenu(prev => prev === "more" ? null : "more")}
               aria-label="ตั้งค่าการเล่น"
               aria-expanded={openMenu === "more"}
@@ -1423,7 +1431,8 @@ export function VideoPlayer({
       {/* Bottom Control Dock (safe-area aware for iPhone home indicator & notched landscape) */}
       {!locked && (
         <div
-          className={`absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-[#080d18]/85 via-[#080d18]/45 to-transparent px-2.5 sm:px-3 pt-9 pb-[max(0.625rem,env(safe-area-inset-bottom))] pl-[max(0.625rem,env(safe-area-inset-left))] pr-[max(0.625rem,env(safe-area-inset-right))] motion-safe:transition-opacity motion-safe:duration-200 ${
+          ref={menuRef}
+          className={`absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-[#080d18]/85 via-[#080d18]/45 to-transparent px-3 pt-9 pb-[max(0.625rem,env(safe-area-inset-bottom))] pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] motion-safe:transition-opacity motion-safe:duration-200 ${
             showOverlay ? "opacity-100" : "pointer-events-none opacity-0"
           }`}
           onPointerEnter={event => {
@@ -1438,296 +1447,288 @@ export function VideoPlayer({
             scheduleHide();
           }}
         >
-          {/* Touch-Friendly Seek Bar (28px touch target on mobile, larger thumb while scrubbing) */}
-          <div
-            ref={trackRef}
-            role="slider"
-            tabIndex={0}
-            aria-label="ตำแหน่งเวลาวิดีโอ"
-            aria-valuemin={0}
-            aria-valuemax={Math.floor(effectiveDuration)}
-            aria-valuenow={Math.floor(activeTime)}
-            aria-valuetext={`${formatTime(activeTime)} จาก ${formatTime(effectiveDuration)}`}
-            className="group/seek relative mb-1.5 sm:mb-2 flex h-7 sm:h-4 cursor-pointer touch-none items-center"
-            onPointerDown={handleSeekPointerDown}
-            onPointerMove={handleSeekPointerMove}
-            onPointerUp={handleSeekPointerUp}
-            onPointerCancel={handleSeekPointerUp}
-            onPointerLeave={() => { if (!scrubbing) setHoverSeek(null); }}
-            onKeyDown={event => {
-              if (event.key === "ArrowLeft") { event.preventDefault(); event.stopPropagation(); seekBy(-5); }
-              else if (event.key === "ArrowRight") { event.preventDefault(); event.stopPropagation(); seekBy(5); }
-            }}
-          >
-            {hoverSeek && effectiveDuration > 0 && (
-              <span
-                style={{ left: `clamp(28px, ${hoverSeek.percent}%, calc(100% - 28px))` }}
-                className="pointer-events-none absolute -top-7 -translate-x-1/2 rounded-md border border-border bg-panel/95 px-2 py-0.5 text-[11px] font-medium text-foreground tabular-nums shadow-md backdrop-blur-sm"
-              >
-                {formatTime(hoverSeek.time)}
-              </span>
-            )}
-            <div className="relative h-1.5 sm:h-1 w-full rounded-full bg-white/25 motion-safe:transition-[height] group-hover/seek:h-1.5">
-              <div
-                className="absolute inset-y-0 left-0 rounded-full bg-white/40"
-                style={{ width: `${bufferedPercent}%` }}
-              />
-              <div
-                className="absolute inset-y-0 left-0 rounded-full bg-accent"
-                style={{ width: `${playedPercent}%` }}
-              />
-              <span
-                className={`absolute top-1/2 size-4 sm:size-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white shadow ring-2 ring-accent motion-safe:transition-transform ${
-                  scrubbing ? "scale-125" : "scale-100 sm:scale-0 sm:group-hover/seek:scale-100"
-                }`}
-                style={{ left: `${playedPercent}%` }}
-              />
+          {/* Mobile Compact Single-Line Bottom Bar (< md): matches mockup [0:05] [Seek Bar] [39:24] [Fullscreen] */}
+          <div className="flex items-center gap-2.5 md:hidden">
+            <span className="shrink-0 text-xs font-medium text-white/95 tabular-nums">
+              {formatTime(activeTime)}
+            </span>
+
+            <div
+              role="slider"
+              tabIndex={0}
+              aria-label="ตำแหน่งเวลาวิดีโอ"
+              aria-valuemin={0}
+              aria-valuemax={Math.floor(effectiveDuration)}
+              aria-valuenow={Math.floor(activeTime)}
+              aria-valuetext={`${formatTime(activeTime)} จาก ${formatTime(effectiveDuration)}`}
+              className="group/seek relative flex h-8 flex-1 cursor-pointer touch-none items-center"
+              onPointerDown={event => {
+                if (effectiveDuration <= 0 || locked) return;
+                event.currentTarget.setPointerCapture(event.pointerId);
+                const ratio = ratioFromPointer(event, event.currentTarget);
+                const nextTime = ratio * effectiveDuration;
+                setScrubbing(true);
+                setScrubTime(nextTime);
+                setHoverSeek({ percent: ratio * 100, time: nextTime });
+                if (!isMpegts && videoRef.current) {
+                  videoRef.current.currentTime = nextTime;
+                } else if (isMpegts && videoRef.current && isInBufferedRange(videoRef.current, nextTime - tsOffset)) {
+                  videoRef.current.currentTime = nextTime - tsOffset;
+                }
+              }}
+              onPointerMove={event => {
+                if (effectiveDuration <= 0 || locked) return;
+                const ratio = ratioFromPointer(event, event.currentTarget);
+                const time = ratio * effectiveDuration;
+                setHoverSeek({ percent: ratio * 100, time });
+                if (scrubbing) {
+                  setScrubTime(time);
+                  if (!isMpegts && videoRef.current) {
+                    videoRef.current.currentTime = time;
+                  } else if (isMpegts && videoRef.current && isInBufferedRange(videoRef.current, time - tsOffset)) {
+                    videoRef.current.currentTime = time - tsOffset;
+                  }
+                }
+              }}
+              onPointerUp={handleSeekPointerUp}
+              onPointerCancel={handleSeekPointerUp}
+              onPointerLeave={() => { if (!scrubbing) setHoverSeek(null); }}
+            >
+              {hoverSeek && scrubbing && effectiveDuration > 0 && (
+                <span
+                  style={{ left: `clamp(24px, ${hoverSeek.percent}%, calc(100% - 24px))` }}
+                  className="pointer-events-none absolute -top-7 -translate-x-1/2 rounded-md border border-border bg-panel/95 px-2 py-0.5 text-[11px] font-medium text-foreground tabular-nums shadow-md backdrop-blur-sm"
+                >
+                  {formatTime(hoverSeek.time)}
+                </span>
+              )}
+              <div className="relative h-1 w-full rounded-full bg-white/25">
+                <div
+                  className="absolute inset-y-0 left-0 rounded-full bg-white/40"
+                  style={{ width: `${bufferedPercent}%` }}
+                />
+                <div
+                  className="absolute inset-y-0 left-0 rounded-full bg-white"
+                  style={{ width: `${playedPercent}%` }}
+                />
+                <span
+                  className={`absolute top-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white shadow motion-safe:transition-transform ${
+                    scrubbing ? "scale-125 ring-2 ring-accent" : "scale-100"
+                  }`}
+                  style={{ left: `${playedPercent}%` }}
+                />
+              </div>
             </div>
+
+            <span className="shrink-0 text-xs font-medium text-white/95 tabular-nums">
+              {formatTime(effectiveDuration)}
+            </span>
+
+            <button
+              type="button"
+              className="grid size-8 shrink-0 place-items-center rounded-lg text-white/90 active:bg-white/20"
+              onClick={toggleFullscreen}
+              aria-label={fullscreen ? "ออกจากเต็มจอ" : "เต็มจอ"}
+            >
+              {fullscreen ? <Minimize size={17} aria-hidden="true" /> : <Maximize size={17} aria-hidden="true" />}
+            </button>
           </div>
 
-          <div className="flex items-center justify-between gap-1.5 sm:gap-2">
-            <div className="flex min-w-0 items-center gap-0.5 sm:gap-1">
-              <button type="button" className={controlBtn} onClick={togglePlay}
-                aria-label={playing ? "หยุดชั่วคราว" : "เล่น"} title={playing ? "หยุดชั่วคราว (Space)" : "เล่น (Space)"}>
-                {playing ? <Pause size={18} className="fill-current" aria-hidden="true" /> :
-                  <Play size={18} className="translate-x-0.5 fill-current" aria-hidden="true" />}
-              </button>
-              <button type="button" className={`hidden sm:grid ${controlBtn}`} onClick={() => seekBy(-10)}
-                aria-label="ย้อนกลับ 10 วินาที" title="ย้อนกลับ 10 วิ (J)">
-                <RotateCcw size={16} aria-hidden="true" />
-              </button>
-              <button type="button" className={`hidden sm:grid ${controlBtn}`} onClick={() => seekBy(10)}
-                aria-label="ข้ามไปข้างหน้า 10 วินาที" title="ข้าม 10 วิ (L)">
-                <RotateCw size={16} aria-hidden="true" />
-              </button>
-
-              <div className="flex items-center gap-1">
-                <button type="button" className={controlBtn} onClick={toggleMute}
-                  aria-label={displayVolume === 0 ? "เปิดเสียง" : "ปิดเสียง"} title="ปิด/เปิดเสียง (M)">
-                  <VolumeIcon size={18} aria-hidden="true" />
-                </button>
-                <div
-                  ref={volumeTrackRef}
-                  role="slider"
-                  tabIndex={0}
-                  aria-label="ระดับเสียง"
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                  aria-valuenow={Math.round(displayVolume * 100)}
-                  className="group/vol hidden h-6 w-16 cursor-pointer touch-none items-center sm:flex"
-                  onPointerDown={handleVolumePointerDown}
-                  onPointerMove={handleVolumePointerMove}
-                  onPointerUp={() => setVolumeDragging(false)}
-                  onPointerCancel={() => setVolumeDragging(false)}
-                  onKeyDown={event => {
-                    if (event.key === "ArrowLeft" || event.key === "ArrowDown") {
-                      event.preventDefault(); event.stopPropagation(); applyVolume(displayVolume - 0.1);
-                    } else if (event.key === "ArrowRight" || event.key === "ArrowUp") {
-                      event.preventDefault(); event.stopPropagation(); applyVolume(displayVolume + 0.1);
-                    }
-                  }}
+          {/* Desktop Seek Bar & Control Bar (md and above — unchanged) */}
+          <div className="hidden md:block">
+            <div
+              ref={trackRef}
+              role="slider"
+              tabIndex={0}
+              aria-label="ตำแหน่งเวลาวิดีโอ"
+              aria-valuemin={0}
+              aria-valuemax={Math.floor(effectiveDuration)}
+              aria-valuenow={Math.floor(activeTime)}
+              aria-valuetext={`${formatTime(activeTime)} จาก ${formatTime(effectiveDuration)}`}
+              className="group/seek relative mb-2 flex h-4 cursor-pointer touch-none items-center"
+              onPointerDown={handleSeekPointerDown}
+              onPointerMove={handleSeekPointerMove}
+              onPointerUp={handleSeekPointerUp}
+              onPointerCancel={handleSeekPointerUp}
+              onPointerLeave={() => { if (!scrubbing) setHoverSeek(null); }}
+              onKeyDown={event => {
+                if (event.key === "ArrowLeft") { event.preventDefault(); event.stopPropagation(); seekBy(-5); }
+                else if (event.key === "ArrowRight") { event.preventDefault(); event.stopPropagation(); seekBy(5); }
+              }}
+            >
+              {hoverSeek && effectiveDuration > 0 && (
+                <span
+                  style={{ left: `clamp(28px, ${hoverSeek.percent}%, calc(100% - 28px))` }}
+                  className="pointer-events-none absolute -top-7 -translate-x-1/2 rounded-md border border-border bg-panel/95 px-2 py-0.5 text-[11px] font-medium text-foreground tabular-nums shadow-md backdrop-blur-sm"
                 >
-                  <div className="relative h-1 w-full rounded-full bg-white/30">
-                    <div className="absolute inset-y-0 left-0 rounded-full bg-accent"
-                      style={{ width: `${displayVolume * 100}%` }} />
-                    <span
-                      className="absolute top-1/2 size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white shadow"
-                      style={{ left: `${displayVolume * 100}%` }}
-                    />
-                  </div>
-                </div>
+                  {formatTime(hoverSeek.time)}
+                </span>
+              )}
+              <div className="relative h-1 w-full rounded-full bg-white/25 motion-safe:transition-[height] group-hover/seek:h-1.5">
+                <div
+                  className="absolute inset-y-0 left-0 rounded-full bg-white/40"
+                  style={{ width: `${bufferedPercent}%` }}
+                />
+                <div
+                  className="absolute inset-y-0 left-0 rounded-full bg-accent"
+                  style={{ width: `${playedPercent}%` }}
+                />
+                <span
+                  className={`absolute top-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white shadow ring-2 ring-accent motion-safe:transition-transform ${
+                    scrubbing ? "scale-125" : "scale-0 group-hover/seek:scale-100"
+                  }`}
+                  style={{ left: `${playedPercent}%` }}
+                />
               </div>
-
-              <span className="ml-1 sm:ml-1.5 truncate text-[11px] sm:text-xs text-white/90 tabular-nums">
-                {formatTime(activeTime)} <span className="text-white/50">/</span> {formatTime(effectiveDuration)}
-              </span>
             </div>
 
-            <div ref={menuRef} className="flex shrink-0 items-center gap-0.5 sm:gap-1">
-              {/* Speed Selector */}
-              <div className="relative">
-                <button
-                  type="button"
-                  className={`${pillBtn} ${rate !== 1 ? "bg-accent/25 text-white" : ""}`}
-                  aria-haspopup="menu"
-                  aria-expanded={openMenu === "speed"}
-                  title="ความเร็วในการเล่น"
-                  onClick={() => setOpenMenu(prev => prev === "speed" ? null : "speed")}
-                >
-                  <span className="tabular-nums">{rate}x</span>
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex min-w-0 items-center gap-1">
+                <button type="button" className={controlBtn} onClick={togglePlay}
+                  aria-label={playing ? "หยุดชั่วคราว" : "เล่น"} title={playing ? "หยุดชั่วคราว (Space)" : "เล่น (Space)"}>
+                  {playing ? <Pause size={18} className="fill-current" aria-hidden="true" /> :
+                    <Play size={18} className="translate-x-0.5 fill-current" aria-hidden="true" />}
+                </button>
+                <button type="button" className={controlBtn} onClick={() => seekBy(-10)}
+                  aria-label="ย้อนกลับ 10 วินาที" title="ย้อนกลับ 10 วิ (J)">
+                  <RotateCcw size={16} aria-hidden="true" />
+                </button>
+                <button type="button" className={controlBtn} onClick={() => seekBy(10)}
+                  aria-label="ข้ามไปข้างหน้า 10 วินาที" title="ข้าม 10 วิ (L)">
+                  <RotateCw size={16} aria-hidden="true" />
                 </button>
 
-                <AnimatePresence>
-                  {openMenu === "speed" && (
-                    <motion.div
-                      key="speed-menu"
-                      role="menu"
-                      aria-label="ความเร็วในการเล่น"
-                      initial={reducedMotion ? { opacity: 0, x: "-50%" } : { opacity: 0, scale: 0.94, x: "-50%", y: 6 }}
-                      animate={{ opacity: 1, scale: 1, x: "-50%", y: 0 }}
-                      exit={reducedMotion ? { opacity: 0, x: "-50%" } : { opacity: 0, scale: 0.96, x: "-50%", y: 4 }}
-                      transition={menuSpring}
-                      style={{ originY: 1 }}
-                      className="studio-dropdown absolute bottom-full left-1/2 z-20 mb-2 min-w-32"
-                    >
-                      {SPEEDS.map(option => (
-                        <button key={option} type="button" role="menuitemradio" aria-checked={rate === option}
-                          onClick={() => changeRate(option)}
-                          className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 sm:py-1.5 text-xs hover:bg-accent/10 ${rate === option ? "bg-accent/15 font-medium text-accent-text" : "text-foreground"}`}>
-                          <Check size={13} className={rate === option ? "shrink-0" : "invisible shrink-0"} aria-hidden="true" />
-                          <span className="tabular-nums">{option === 1 ? "ปกติ (1x)" : `${option}x`}</span>
-                        </button>
-                      ))}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                <div className="flex items-center gap-1">
+                  <button type="button" className={controlBtn} onClick={toggleMute}
+                    aria-label={displayVolume === 0 ? "เปิดเสียง" : "ปิดเสียง"} title="ปิด/เปิดเสียง (M)">
+                    <VolumeIcon size={18} aria-hidden="true" />
+                  </button>
+                  <div
+                    ref={volumeTrackRef}
+                    role="slider"
+                    tabIndex={0}
+                    aria-label="ระดับเสียง"
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-valuenow={Math.round(displayVolume * 100)}
+                    className="group/vol flex h-6 w-16 cursor-pointer touch-none items-center"
+                    onPointerDown={handleVolumePointerDown}
+                    onPointerMove={handleVolumePointerMove}
+                    onPointerUp={() => setVolumeDragging(false)}
+                    onPointerCancel={() => setVolumeDragging(false)}
+                    onKeyDown={event => {
+                      if (event.key === "ArrowLeft" || event.key === "ArrowDown") {
+                        event.preventDefault(); event.stopPropagation(); applyVolume(displayVolume - 0.1);
+                      } else if (event.key === "ArrowRight" || event.key === "ArrowUp") {
+                        event.preventDefault(); event.stopPropagation(); applyVolume(displayVolume + 0.1);
+                      }
+                    }}
+                  >
+                    <div className="relative h-1 w-full rounded-full bg-white/30">
+                      <div className="absolute inset-y-0 left-0 rounded-full bg-accent"
+                        style={{ width: `${displayVolume * 100}%` }} />
+                      <span
+                        className="absolute top-1/2 size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white shadow"
+                        style={{ left: `${displayVolume * 100}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <span className="ml-1.5 truncate text-xs text-white/90 tabular-nums">
+                  {formatTime(activeTime)} <span className="text-white/50">/</span> {formatTime(effectiveDuration)}
+                </span>
               </div>
 
-              {/* Quality Selector */}
-              {variants.length > 0 && (
+              <div className="flex shrink-0 items-center gap-1">
+                {/* Speed Selector */}
                 <div className="relative">
                   <button
                     type="button"
-                    className={pillBtn}
+                    className={`${pillBtn} ${rate !== 1 ? "bg-accent/25 text-white" : ""}`}
                     aria-haspopup="menu"
-                    aria-expanded={openMenu === "quality"}
-                    title="ความละเอียดวิดีโอ"
-                    onClick={() => setOpenMenu(prev => prev === "quality" ? null : "quality")}
+                    aria-expanded={openMenu === "speed"}
+                    title="ความเร็วในการเล่น"
+                    onClick={() => setOpenMenu(prev => prev === "speed" ? null : "speed")}
                   >
-                    <SlidersHorizontal size={14} aria-hidden="true" />
-                    <span>{shortQualityLabel(source)}</span>
+                    <span className="tabular-nums">{rate}x</span>
                   </button>
 
                   <AnimatePresence>
-                    {openMenu === "quality" && (
+                    {openMenu === "speed" && (
                       <motion.div
-                        key="quality-menu"
+                        key="speed-menu"
                         role="menu"
-                        aria-label="ความละเอียดวิดีโอ"
-                        initial={reducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.94, y: 6 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={reducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.96, y: 4 }}
+                        aria-label="ความเร็วในการเล่น"
+                        initial={reducedMotion ? { opacity: 0, x: "-50%" } : { opacity: 0, scale: 0.94, x: "-50%", y: 6 }}
+                        animate={{ opacity: 1, scale: 1, x: "-50%", y: 0 }}
+                        exit={reducedMotion ? { opacity: 0, x: "-50%" } : { opacity: 0, scale: 0.96, x: "-50%", y: 4 }}
                         transition={menuSpring}
-                        style={{ originX: 1, originY: 1 }}
-                        className="studio-dropdown absolute right-0 bottom-full z-20 mb-2 max-h-56 min-w-52 max-w-[calc(100vw-2rem)] overflow-y-auto"
+                        style={{ originY: 1 }}
+                        className="studio-dropdown absolute bottom-full left-1/2 z-20 mb-2 min-w-32"
                       >
-                        {variants.map((variant, index) => (
-                          <button key={variant.url} type="button" role="menuitemradio" aria-checked={index === selected}
-                            onClick={() => changeQuality(index)}
-                            className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 sm:py-1.5 text-start text-xs hover:bg-accent/10 ${index === selected ? "bg-accent/15 font-medium text-accent-text" : "text-foreground"}`}>
-                            <Check size={13} className={index === selected ? "shrink-0" : "invisible shrink-0"} aria-hidden="true" />
-                            <span className="min-w-0 flex-1 truncate">{variant.label}</span>
-                            {variant.detail && <span className="shrink-0 text-[11px] text-muted tabular-nums">{variant.detail}</span>}
+                        {SPEEDS.map(option => (
+                          <button key={option} type="button" role="menuitemradio" aria-checked={rate === option}
+                            onClick={() => changeRate(option)}
+                            className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs hover:bg-accent/10 ${rate === option ? "bg-accent/15 font-medium text-accent-text" : "text-foreground"}`}>
+                            <Check size={13} className={rate === option ? "shrink-0" : "invisible shrink-0"} aria-hidden="true" />
+                            <span className="tabular-nums">{option === 1 ? "ปกติ (1x)" : `${option}x`}</span>
                           </button>
                         ))}
                       </motion.div>
                     )}
                   </AnimatePresence>
                 </div>
-              )}
 
-              {/* More Options Menu (Mobile & Touch accessible replacement for right-click context menu) */}
-              <div className="relative">
-                <button
-                  type="button"
-                  className={controlBtn}
-                  aria-label="ตัวเลือกเพิ่มเติม"
-                  aria-haspopup="menu"
-                  aria-expanded={openMenu === "more"}
-                  title="ตัวเลือกเพิ่มเติม"
-                  onClick={() => setOpenMenu(prev => prev === "more" ? null : "more")}
-                >
-                  <MoreVertical size={17} aria-hidden="true" />
-                </button>
-
-                <AnimatePresence>
-                  {openMenu === "more" && (
-                    <motion.div
-                      key="more-menu"
-                      role="menu"
-                      aria-label="ตัวเลือกเพิ่มเติม"
-                      initial={reducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.94, y: 6 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      exit={reducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.96, y: 4 }}
-                      transition={menuSpring}
-                      style={{ originX: 1, originY: 1 }}
-                      className="studio-dropdown absolute right-0 bottom-full z-20 mb-2 w-56 p-1.5"
+                {/* Quality Selector */}
+                {variants.length > 0 && (
+                  <div className="relative">
+                    <button
+                      type="button"
+                      className={pillBtn}
+                      aria-haspopup="menu"
+                      aria-expanded={openMenu === "quality"}
+                      title="ความละเอียดวิดีโอ"
+                      onClick={() => setOpenMenu(prev => prev === "quality" ? null : "quality")}
                     >
-                      <button type="button" role="menuitemcheckbox" aria-checked={loop} onClick={toggleLoop}
-                        className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-start text-xs text-foreground hover:bg-accent/10">
-                        <Repeat size={15} className="shrink-0 text-muted" aria-hidden="true" />
-                        <span className="flex-1">เล่นซ้ำ</span>
-                        {loop && <Check size={14} className="shrink-0 text-accent-text" aria-hidden="true" />}
-                      </button>
+                      <SlidersHorizontal size={14} aria-hidden="true" />
+                      <span>{shortQualityLabel(source)}</span>
+                    </button>
 
-                      {pipSupported && (
-                        <button type="button" role="menuitem" onClick={togglePip}
-                          className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-start text-xs text-foreground hover:bg-accent/10">
-                          <PictureInPicture2 size={15} className="shrink-0 text-muted" aria-hidden="true" />
-                          <span className="flex-1">ภาพซ้อนภาพ (PiP)</span>
-                        </button>
+                    <AnimatePresence>
+                      {openMenu === "quality" && (
+                        <motion.div
+                          key="quality-menu"
+                          role="menu"
+                          aria-label="ความละเอียดวิดีโอ"
+                          initial={reducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.94, y: 6 }}
+                          animate={{ opacity: 1, scale: 1, y: 0 }}
+                          exit={reducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.96, y: 4 }}
+                          transition={menuSpring}
+                          style={{ originX: 1, originY: 1 }}
+                          className="studio-dropdown absolute right-0 bottom-full z-20 mb-2 max-h-56 min-w-52 max-w-[calc(100vw-2rem)] overflow-y-auto"
+                        >
+                          {variants.map((variant, index) => (
+                            <button key={variant.url} type="button" role="menuitemradio" aria-checked={index === selected}
+                              onClick={() => changeQuality(index)}
+                              className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-start text-xs hover:bg-accent/10 ${index === selected ? "bg-accent/15 font-medium text-accent-text" : "text-foreground"}`}>
+                              <Check size={13} className={index === selected ? "shrink-0" : "invisible shrink-0"} aria-hidden="true" />
+                              <span className="min-w-0 flex-1 truncate">{variant.label}</span>
+                              {variant.detail && <span className="shrink-0 text-[11px] text-muted tabular-nums">{variant.detail}</span>}
+                            </button>
+                          ))}
+                        </motion.div>
                       )}
+                    </AnimatePresence>
+                  </div>
+                )}
 
-                      <button
-                        type="button"
-                        role="menuitem"
-                        onClick={() => {
-                          setOpenMenu(null);
-                          setLocked(true);
-                          showToast("ล็อกหน้าจอสัมผัสแล้ว");
-                        }}
-                        className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-start text-xs text-foreground hover:bg-accent/10"
-                      >
-                        <Lock size={15} className="shrink-0 text-muted" aria-hidden="true" />
-                        <span className="flex-1">ล็อกหน้าจอสัมผัส</span>
-                      </button>
-
-                      <div className="my-1 border-t border-border" role="separator" />
-
-                      {source?.url && !source.hls && fileId ? (
-                        <button type="button" role="menuitem" onClick={downloadCurrentVariant}
-                          className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-start text-xs text-foreground hover:bg-accent/10">
-                          <Download size={15} className="shrink-0 text-muted" aria-hidden="true" />
-                          <span className="min-w-0 flex-1 truncate">ดาวน์โหลดวิดีโอ ({shortQualityLabel(source)})</span>
-                        </button>
-                      ) : source?.url && (
-                        <button type="button" role="menuitem"
-                          onClick={() => { setOpenMenu(null); copyText(source.url, "คัดลอก URL สตรีมแล้ว"); }}
-                          className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-start text-xs text-foreground hover:bg-accent/10">
-                          <Link2 size={15} className="shrink-0 text-muted" aria-hidden="true" />
-                          <span className="flex-1">คัดลอก URL สตรีม</span>
-                        </button>
-                      )}
-
-                      {fileInfo && (
-                        <button type="button" role="menuitem"
-                          onClick={() => { setOpenMenu(null); copyText(JSON.stringify(fileInfo, null, 2), "คัดลอกข้อมูล JSON แล้ว"); }}
-                          className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-start text-xs text-foreground hover:bg-accent/10">
-                          <Braces size={15} className="shrink-0 text-muted" aria-hidden="true" />
-                          <span className="flex-1">คัดลอกข้อมูล JSON</span>
-                        </button>
-                      )}
-
-                      <div className="my-1 border-t border-border" role="separator" />
-
-                      <button type="button" role="menuitemcheckbox" aria-checked={statsOpen}
-                        onClick={() => { setOpenMenu(null); setStatsOpen(prev => !prev); }}
-                        className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-start text-xs text-foreground hover:bg-accent/10">
-                        <Activity size={15} className="shrink-0 text-muted" aria-hidden="true" />
-                        <span className="flex-1">สถิติสำหรับเด็กเนิร์ด</span>
-                        {statsOpen && <Check size={14} className="shrink-0 text-accent-text" aria-hidden="true" />}
-                      </button>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-
-              {pipSupported && (
-                <button type="button" className={`hidden sm:grid ${controlBtn}`} onClick={togglePip}
-                  aria-label="หน้าต่างลอย (Picture-in-Picture)" title="Picture-in-Picture">
-                  <PictureInPicture2 size={16} aria-hidden="true" />
-                </button>
-              )}
+                {pipSupported && (
+                  <button type="button" className={controlBtn} onClick={togglePip}
+                    aria-label="หน้าต่างลอย (Picture-in-Picture)" title="Picture-in-Picture">
+                    <PictureInPicture2 size={16} aria-hidden="true" />
+                  </button>
+                )}
 
                 <button type="button" className={controlBtn} onClick={toggleFullscreen}
                   aria-label={fullscreen ? "ออกจากเต็มจอ" : "เต็มจอ"} title={fullscreen ? "ออกจากเต็มจอ (F)" : "เต็มจอ (F)"}>
@@ -1736,8 +1737,185 @@ export function VideoPlayer({
               </div>
             </div>
           </div>
-        )}
+        </div>
+      )}
       </div>
+
+      {/* Mobile Settings Bottom Sheet (opens inside full-screen dialog on mobile so it is NEVER clipped by aspect-video!) */}
+      <AnimatePresence>
+        {openMenu === "more" && (
+          <>
+            <motion.div
+              key="mobile-sheet-backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.16 }}
+              onClick={() => setOpenMenu(null)}
+              className="fixed inset-0 z-40 bg-black/55 backdrop-blur-[2px] md:hidden"
+            />
+            <motion.div
+              key="mobile-sheet"
+              ref={mobileSheetRef}
+              role="dialog"
+              aria-label="ตั้งค่าการเล่นวิดีโอ"
+              initial={reducedMotion ? { opacity: 0 } : { y: "100%" }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={reducedMotion ? { opacity: 0 } : { y: "100%" }}
+              transition={reducedMotion ? { duration: 0.1 } : { type: "spring", stiffness: 420, damping: 36 }}
+              onClick={event => event.stopPropagation()}
+              className="fixed inset-x-0 bottom-0 z-50 max-h-[82dvh] overflow-y-auto rounded-t-2xl border-t border-border bg-panel px-4 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] text-foreground shadow-2xl md:hidden"
+            >
+              <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-border" aria-hidden="true" />
+              <div className="mb-3 flex items-center justify-between">
+                <span className="text-sm font-semibold">ตั้งค่าการเล่น</span>
+                <button
+                  type="button"
+                  onClick={() => setOpenMenu(null)}
+                  aria-label="ปิดเมนูตั้งค่า"
+                  className="grid size-8 place-items-center rounded-full text-muted hover:bg-field hover:text-foreground"
+                >
+                  <X size={18} aria-hidden="true" />
+                </button>
+              </div>
+
+              {/* Quality Section */}
+              {variants.length > 0 && (
+                <div className="mb-3.5">
+                  <p className="mb-1.5 text-xs font-medium text-muted">ความละเอียดวิดีโอ</p>
+                  <div className="grid gap-1">
+                    {variants.map((variant, index) => (
+                      <button
+                        key={variant.url}
+                        type="button"
+                        onClick={() => changeQuality(index)}
+                        className={`flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2 text-start text-xs ${
+                          index === selected
+                            ? "bg-accent/15 font-semibold text-accent-text"
+                            : "bg-field/60 text-foreground active:bg-accent/10"
+                        }`}
+                      >
+                        <span className="truncate">{variant.label}</span>
+                        <span className="flex shrink-0 items-center gap-2">
+                          {variant.detail && <span className="text-[11px] text-muted tabular-nums">{variant.detail}</span>}
+                          {index === selected && <Check size={14} aria-hidden="true" />}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Speed Section */}
+              <div className="mb-3.5">
+                <p className="mb-1.5 text-xs font-medium text-muted">ความเร็วในการเล่น</p>
+                <div className="grid grid-cols-6 gap-1.5">
+                  {SPEEDS.map(option => (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() => changeRate(option)}
+                      className={`flex h-9 items-center justify-center rounded-xl text-xs font-medium tabular-nums ${
+                        rate === option
+                          ? "bg-accent text-white shadow-xs"
+                          : "bg-field text-foreground active:bg-accent/15"
+                      }`}
+                    >
+                      {option}x
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Quick Actions */}
+              <div className="grid grid-cols-2 gap-1.5 border-t border-border pt-3">
+                <button
+                  type="button"
+                  onClick={toggleMute}
+                  className="flex items-center gap-2.5 rounded-xl bg-field px-3 py-2.5 text-start text-xs text-foreground active:bg-accent/10"
+                >
+                  <VolumeIcon size={16} className="shrink-0 text-muted" aria-hidden="true" />
+                  <span className="truncate">{displayVolume === 0 ? "เปิดเสียง" : "ปิดเสียง"}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={toggleLoop}
+                  className={`flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-start text-xs ${
+                    loop ? "bg-accent/15 font-medium text-accent-text" : "bg-field text-foreground"
+                  }`}
+                >
+                  <Repeat size={16} className="shrink-0" aria-hidden="true" />
+                  <span className="truncate">{loop ? "เล่นซ้ำ: เปิด" : "เล่นซ้ำ: ปิด"}</span>
+                </button>
+
+                {pipSupported && (
+                  <button
+                    type="button"
+                    onClick={togglePip}
+                    className="flex items-center gap-2.5 rounded-xl bg-field px-3 py-2.5 text-start text-xs text-foreground active:bg-accent/10"
+                  >
+                    <PictureInPicture2 size={16} className="shrink-0 text-muted" aria-hidden="true" />
+                    <span className="truncate">ภาพซ้อนภาพ (PiP)</span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpenMenu(null);
+                    setLocked(true);
+                    showToast("ล็อกหน้าจอสัมผัสแล้ว");
+                  }}
+                  className="flex items-center gap-2.5 rounded-xl bg-field px-3 py-2.5 text-start text-xs text-foreground active:bg-accent/10"
+                >
+                  <Lock size={16} className="shrink-0 text-muted" aria-hidden="true" />
+                  <span className="truncate">ล็อกหน้าจอสัมผัส</span>
+                </button>
+
+                {source?.url && !source.hls && fileId && (
+                  <button
+                    type="button"
+                    onClick={downloadCurrentVariant}
+                    className="flex items-center gap-2.5 rounded-xl bg-field px-3 py-2.5 text-start text-xs text-foreground active:bg-accent/10"
+                  >
+                    <Download size={16} className="shrink-0 text-muted" aria-hidden="true" />
+                    <span className="truncate">ดาวน์โหลด ({shortQualityLabel(source)})</span>
+                  </button>
+                )}
+
+                {fileInfo && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpenMenu(null);
+                      copyText(JSON.stringify(fileInfo, null, 2), "คัดลอกข้อมูล JSON แล้ว");
+                    }}
+                    className="flex items-center gap-2.5 rounded-xl bg-field px-3 py-2.5 text-start text-xs text-foreground active:bg-accent/10"
+                  >
+                    <Braces size={16} className="shrink-0 text-muted" aria-hidden="true" />
+                    <span className="truncate">คัดลอก JSON</span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpenMenu(null);
+                    setStatsOpen(prev => !prev);
+                  }}
+                  className={`flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-start text-xs ${
+                    statsOpen ? "bg-accent/15 font-medium text-accent-text" : "bg-field text-foreground"
+                  }`}
+                >
+                  <Activity size={16} className="shrink-0" aria-hidden="true" />
+                  <span className="truncate">สถิติเด็กเนิร์ด</span>
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* Mobile Footer Gesture Hint (matches image 3: ปัดซ้าย/ขวา ไปวิดีโอถัดไป · ปัดลงเพื่อย่อ) */}
       {!fullscreen && (
