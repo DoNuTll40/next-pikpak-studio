@@ -6,6 +6,7 @@ import {
   Activity,
   Braces,
   Check,
+  ChevronDown,
   Download,
   FastForward,
   Link2,
@@ -21,6 +22,7 @@ import {
   Rewind,
   RotateCcw,
   RotateCw,
+  Settings,
   SlidersHorizontal,
   Unlock,
   Volume1,
@@ -28,7 +30,8 @@ import {
   VolumeX,
   X,
 } from "lucide-react";
-import { resolutionLabel } from "@/lib/catalog";
+import { catalogFontClass, resolutionLabel } from "@/lib/catalog";
+import { Thumbnail } from "./Thumbnail";
 import { VideoStatsOverlay } from "./VideoStatsOverlay";
 
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
@@ -98,6 +101,11 @@ export function VideoPlayer({
   variants,
   selected,
   onSelectQuality,
+  siblings = [],
+  onSelectSibling,
+  minimized = false,
+  onMinimize,
+  onRestore,
   currentIndex = 0,
   totalSiblings = 1,
   hasPrev = false,
@@ -682,10 +690,17 @@ export function VideoPlayer({
           return;
         }
       }
-      // Swipe down to close / minimize player on mobile
-      if (dy > 76 && Math.abs(dy) > Math.abs(dx) * 1.4 && typeof onClose === "function") {
-        onClose();
-        return;
+      // Swipe down to minimize into floating Mini Player (or close if minimize unavailable)
+      if (dy > 76 && Math.abs(dy) > Math.abs(dx) * 1.4) {
+        if (typeof onMinimize === "function") {
+          setOpenMenu(null);
+          onMinimize();
+          return;
+        }
+        if (typeof onClose === "function") {
+          onClose();
+          return;
+        }
       }
     }
 
@@ -990,19 +1005,30 @@ export function VideoPlayer({
   const displayVolume = muted ? 0 : volume;
   const VolumeIcon = displayVolume === 0 ? VolumeX : displayVolume < 0.5 ? Volume1 : Volume2;
 
-  return (
-    <div className={fullscreen ? "size-full bg-[#080d18]" : "flex size-full flex-col justify-between bg-[#080d18] md:block md:size-auto"}>
-      {/* Spacer for mobile vertical centering when not in fullscreen */}
-      {!fullscreen && <div className="flex-1 md:hidden" aria-hidden="true" />}
+  const otherVideos = siblings.filter(entry => entry.id !== fileId);
 
+  return (
+    <div
+      className={
+        minimized
+          ? "relative flex w-full items-center gap-2.5 bg-panel px-2.5 py-2 text-foreground"
+          : fullscreen
+            ? "size-full bg-[#080d18]"
+            : "flex size-full flex-col bg-background text-foreground md:block md:size-auto md:bg-[#080d18]"
+      }
+    >
       <div
         ref={stageRef}
         tabIndex={-1}
         role="region"
         aria-label="ตัวเล่นวิดีโอ"
-        className={`group/player relative flex items-center justify-center overflow-hidden bg-[#080d18] select-none touch-manipulation focus:outline-none! ${
-          fullscreen ? "size-full" : "aspect-video max-h-dvh sm:max-h-[calc(100dvh-32px)] w-full"
-        }`}
+        className={
+          minimized
+            ? "relative h-12 w-21 shrink-0 overflow-hidden rounded-lg bg-[#080d18]"
+            : `group/player relative flex shrink-0 items-center justify-center overflow-hidden bg-[#080d18] select-none touch-manipulation focus:outline-none! ${
+                fullscreen ? "size-full" : "aspect-video max-h-dvh sm:max-h-[calc(100dvh-32px)] w-full"
+              }`
+        }
         onKeyDown={handleKeyDown}
         onContextMenu={handleContextMenu}
         onPointerMove={handleVideoPointerMove}
@@ -1010,6 +1036,7 @@ export function VideoPlayer({
           if (event.pointerType === "touch") return;
           if (playing && !scrubbing && !openMenu && !contextMenu) setControlsVisible(false);
         }}
+        onClick={minimized ? onRestore : undefined}
       >
       <video
         ref={videoRef}
@@ -1110,7 +1137,7 @@ export function VideoPlayer({
       />
 
       {/* Top Header Bar (respects safe-area insets in fullscreen mobile landscape) */}
-      {!locked && (
+      {!locked && !minimized && (
         <div
           className={`absolute inset-x-0 top-0 z-10 flex items-center justify-between gap-2.5 bg-gradient-to-b from-[#080d18]/75 via-[#080d18]/30 to-transparent px-3 sm:px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-8 pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] motion-safe:transition-opacity motion-safe:duration-200 ${
             showOverlay ? "opacity-100" : "pointer-events-none opacity-0"
@@ -1127,30 +1154,22 @@ export function VideoPlayer({
             scheduleHide();
           }}
         >
-          {/* Mobile Header: [X] | [Title · 1 / 14] | [Settings/Quality] */}
+          {/* Mobile Header (matches mockup: [v] [合集1.mp4] ... [Settings Gear]) */}
           <div className="flex w-full items-center justify-between gap-2 md:hidden">
-            {!fullscreen && onClose ? (
-              <button
-                type="button"
-                onClick={onClose}
-                aria-label="ปิดพรีวิว"
-                className="grid size-9 shrink-0 place-items-center rounded-full text-white/90 active:bg-white/15"
-              >
-                <X size={20} aria-hidden="true" />
-              </button>
-            ) : (
-              <span className="size-9 shrink-0" aria-hidden="true" />
-            )}
-
-            <div className="flex min-w-0 flex-1 items-center justify-center gap-1.5 text-center">
+            <div className="flex min-w-0 flex-1 items-center gap-1">
+              {!fullscreen && (onMinimize || onClose) && (
+                <button
+                  type="button"
+                  onClick={onMinimize ?? onClose}
+                  aria-label={onMinimize ? "ย่อเป็น Mini Player" : "ปิดพรีวิว"}
+                  className="grid size-9 shrink-0 place-items-center rounded-full text-white/95 active:bg-white/15"
+                >
+                  <ChevronDown size={22} aria-hidden="true" />
+                </button>
+              )}
               <span className={`truncate text-xs font-semibold text-white drop-shadow-xs ${titleClass}`}>
                 {title}
               </span>
-              {totalSiblings > 1 && (
-                <span className="shrink-0 text-xs font-semibold text-white/80 tabular-nums">
-                  · {currentIndex + 1} / {totalSiblings}
-                </span>
-              )}
             </div>
 
             <button
@@ -1159,9 +1178,9 @@ export function VideoPlayer({
               onClick={() => setOpenMenu(prev => prev === "more" ? null : "more")}
               aria-label="ตั้งค่าการเล่น"
               aria-expanded={openMenu === "more"}
-              className="grid size-9 shrink-0 place-items-center rounded-full text-white/90 active:bg-white/15"
+              className="grid size-9 shrink-0 place-items-center rounded-full text-white/95 active:bg-white/15"
             >
-              <SlidersHorizontal size={18} aria-hidden="true" />
+              <Settings size={19} aria-hidden="true" />
             </button>
           </div>
 
@@ -1371,31 +1390,22 @@ export function VideoPlayer({
           </motion.div>
         )}
 
-        {/* Center Transport Controls (Mobile shows dashed -10 / Play|Pause / dashed +10; Desktop shows Play when paused) */}
-        {!isLoading && !failed && !locked && showOverlay && (
+        {/* Center Transport Controls (clean single Play/Pause circle like mockup; double-tap edges still seek ±10s) */}
+        {!isLoading && !failed && !locked && !minimized && showOverlay && (
           <motion.div
             key="center-transport"
             initial={reducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={reducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.14 }}
-            className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center gap-10 sm:gap-0"
+            className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center"
           >
-            <button
-              type="button"
-              aria-label="ย้อนกลับ 10 วินาที"
-              onClick={() => triggerDoubleTapSeek("left")}
-              className="pointer-events-auto grid size-12 place-items-center rounded-full border border-dashed border-white/40 bg-[#080d18]/45 text-xs font-semibold text-white shadow-md backdrop-blur-xs active:scale-90 sm:hidden"
-            >
-              -10
-            </button>
-
             <button
               type="button"
               aria-label={playing ? "หยุดชั่วคราว" : "เล่นวิดีโอ"}
               onClick={togglePlay}
-              className={`pointer-events-auto grid size-14 place-items-center rounded-full bg-accent text-white shadow-lg shadow-accent/35 backdrop-blur-sm active:scale-95 hover:bg-accent/90 ${
-                playing ? "sm:hidden" : ""
+              className={`pointer-events-auto grid size-14 place-items-center rounded-full bg-accent text-white shadow-lg shadow-accent/35 ring-8 ring-white/10 backdrop-blur-sm active:scale-95 hover:bg-accent/90 ${
+                playing ? "md:hidden" : ""
               }`}
             >
               {playing ? (
@@ -1403,15 +1413,6 @@ export function VideoPlayer({
               ) : (
                 <Play size={24} className="translate-x-0.5 fill-current" aria-hidden="true" />
               )}
-            </button>
-
-            <button
-              type="button"
-              aria-label="ข้ามไปข้างหน้า 10 วินาที"
-              onClick={() => triggerDoubleTapSeek("right")}
-              className="pointer-events-auto grid size-12 place-items-center rounded-full border border-dashed border-white/40 bg-[#080d18]/45 text-xs font-semibold text-white shadow-md backdrop-blur-xs active:scale-90 sm:hidden"
-            >
-              +10
             </button>
           </motion.div>
         )}
@@ -1429,7 +1430,7 @@ export function VideoPlayer({
       )}
 
       {/* Bottom Control Dock (safe-area aware for iPhone home indicator & notched landscape) */}
-      {!locked && (
+      {!locked && !minimized && (
         <div
           ref={menuRef}
           className={`absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-[#080d18]/85 via-[#080d18]/45 to-transparent px-3 pt-9 pb-[max(0.625rem,env(safe-area-inset-bottom))] pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] motion-safe:transition-opacity motion-safe:duration-200 ${
@@ -1741,9 +1742,107 @@ export function VideoPlayer({
       )}
       </div>
 
-      {/* Mobile Settings Bottom Sheet (opens inside full-screen dialog on mobile so it is NEVER clipped by aspect-video!) */}
+      {/* Mini Player Controls Bar (visible only when minimized on mobile — matches right side of mockup) */}
+      {minimized && (
+        <>
+          <button
+            type="button"
+            onClick={onRestore}
+            className="min-w-0 flex-1 text-start"
+          >
+            <p className={`truncate text-xs font-semibold text-foreground ${titleClass}`}>{title}</p>
+            <p className="mt-0.5 text-[11px] text-muted tabular-nums">
+              {formatTime(activeTime)} / {formatTime(effectiveDuration)}
+            </p>
+          </button>
+
+          <button
+            type="button"
+            onClick={togglePlay}
+            aria-label={playing ? "หยุดชั่วคราว" : "เล่น"}
+            className="grid size-9 shrink-0 place-items-center rounded-full text-foreground active:bg-foreground/10"
+          >
+            {playing ? <Pause size={18} className="fill-current" aria-hidden="true" /> : <Play size={18} className="translate-x-0.5 fill-current" aria-hidden="true" />}
+          </button>
+
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="ปิดตัวเล่น"
+            className="grid size-9 shrink-0 place-items-center rounded-full text-muted active:bg-foreground/10"
+          >
+            <X size={18} aria-hidden="true" />
+          </button>
+
+          {/* Thin progress indicator along the bottom edge of the mini player */}
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-0.5 bg-border/60">
+            <div className="h-full bg-accent transition-[width] duration-150" style={{ width: `${playedPercent}%` }} />
+          </div>
+        </>
+      )}
+
+      {/* Mobile Watch-Page Below Video (matches mockup left: title, status "กำลังเล่น · 1080p · 1x", and 2-col sibling video cards) */}
+      {!fullscreen && !minimized && (
+        <div className="min-h-0 flex-1 overflow-y-auto bg-background px-3.5 pt-3.5 pb-[max(1.25rem,env(safe-area-inset-bottom))] md:hidden">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <h2 className={`line-clamp-2 text-[0.98rem] leading-snug font-semibold text-foreground ${titleClass}`} title={title}>
+                {title}
+              </h2>
+              <p className="mt-1 text-xs text-muted tabular-nums">
+                {playing ? "กำลังเล่น" : "หยุดชั่วคราว"} · {shortQualityLabel(source)} · {rate}x
+                {totalSiblings > 1 ? ` · คลิปที่ ${currentIndex + 1}/${totalSiblings}` : ""}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="ปิดตัวเล่น"
+              className="grid size-8 shrink-0 place-items-center rounded-full text-muted active:bg-foreground/10"
+            >
+              <X size={18} aria-hidden="true" />
+            </button>
+          </div>
+
+          {otherVideos.length > 0 && (
+            <div className="mt-4">
+              <p className="mb-2 text-xs font-semibold text-muted">วิดีโออื่นในโฟลเดอร์นี้ ({otherVideos.length})</p>
+              <div className="grid grid-cols-2 gap-2.5">
+                {otherVideos.map(entry => (
+                  <button
+                    key={entry.id}
+                    type="button"
+                    onClick={() => onSelectSibling?.(entry)}
+                    className="flex min-w-0 flex-col rounded-2xl border border-border bg-panel p-1.5 text-start active:scale-[0.98]"
+                  >
+                    <span className="relative grid aspect-video w-full place-items-center overflow-hidden rounded-xl bg-art">
+                      {entry.thumbnail && (
+                        <>
+                          <Thumbnail src={entry.thumbnail} className="absolute inset-0 size-full scale-110 object-cover blur-[12px] brightness-[.68]" />
+                          <Thumbnail src={entry.thumbnail} className="absolute inset-0 size-full object-contain" />
+                        </>
+                      )}
+                      <span aria-hidden="true" className="pointer-events-none relative z-1 grid size-9 place-items-center rounded-full bg-black/55 text-white">
+                        <Play size={16} className="ml-0.5 fill-current" />
+                      </span>
+                    </span>
+                    <span className={`mt-2 line-clamp-1 px-0.5 text-xs font-medium text-foreground ${catalogFontClass(entry.name) ?? ""}`}>
+                      {entry.name}
+                    </span>
+                    <span className="mt-0.5 px-0.5 pb-0.5 text-[11px] text-muted">
+                      {entry.hasInfo ? "เคยเปิดใน Desktop" : "ยังไม่มีประวัติเปิด"}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Mobile Settings Bottom Sheet (matches left mockup: pill chips for ความเร็ว & คุณภาพ + clean action rows) */}
       <AnimatePresence>
-        {openMenu === "more" && (
+        {openMenu === "more" && !minimized && (
           <>
             <motion.div
               key="mobile-sheet-backdrop"
@@ -1752,73 +1851,36 @@ export function VideoPlayer({
               exit={{ opacity: 0 }}
               transition={{ duration: 0.16 }}
               onClick={() => setOpenMenu(null)}
-              className="fixed inset-0 z-40 bg-black/55 backdrop-blur-[2px] md:hidden"
+              className="fixed inset-0 z-40 bg-black/50 backdrop-blur-[2px] md:hidden"
             />
             <motion.div
               key="mobile-sheet"
               ref={mobileSheetRef}
               role="dialog"
-              aria-label="ตั้งค่าการเล่นวิดีโอ"
+              aria-label="ตั้งค่าการเล่น"
               initial={reducedMotion ? { opacity: 0 } : { y: "100%" }}
               animate={{ opacity: 1, y: 0 }}
               exit={reducedMotion ? { opacity: 0 } : { y: "100%" }}
               transition={reducedMotion ? { duration: 0.1 } : { type: "spring", stiffness: 420, damping: 36 }}
               onClick={event => event.stopPropagation()}
-              className="fixed inset-x-0 bottom-0 z-50 max-h-[82dvh] overflow-y-auto rounded-t-2xl border-t border-border bg-panel px-4 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] text-foreground shadow-2xl md:hidden"
+              className="fixed inset-x-0 bottom-0 z-50 max-h-[82dvh] overflow-y-auto rounded-t-[24px] border-t border-border bg-panel px-5 pt-3 pb-[max(1.5rem,env(safe-area-inset-bottom))] text-foreground shadow-2xl md:hidden"
             >
-              <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-border" aria-hidden="true" />
-              <div className="mb-3 flex items-center justify-between">
-                <span className="text-sm font-semibold">ตั้งค่าการเล่น</span>
-                <button
-                  type="button"
-                  onClick={() => setOpenMenu(null)}
-                  aria-label="ปิดเมนูตั้งค่า"
-                  className="grid size-8 place-items-center rounded-full text-muted hover:bg-field hover:text-foreground"
-                >
-                  <X size={18} aria-hidden="true" />
-                </button>
-              </div>
+              <div className="mx-auto mb-3.5 h-1 w-10 rounded-full bg-border" aria-hidden="true" />
+              <h3 className="mb-4 text-base font-semibold text-foreground">ตั้งค่าการเล่น</h3>
 
-              {/* Quality Section */}
-              {variants.length > 0 && (
-                <div className="mb-3.5">
-                  <p className="mb-1.5 text-xs font-medium text-muted">ความละเอียดวิดีโอ</p>
-                  <div className="grid gap-1">
-                    {variants.map((variant, index) => (
-                      <button
-                        key={variant.url}
-                        type="button"
-                        onClick={() => changeQuality(index)}
-                        className={`flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2 text-start text-xs ${
-                          index === selected
-                            ? "bg-accent/15 font-semibold text-accent-text"
-                            : "bg-field/60 text-foreground active:bg-accent/10"
-                        }`}
-                      >
-                        <span className="truncate">{variant.label}</span>
-                        <span className="flex shrink-0 items-center gap-2">
-                          {variant.detail && <span className="text-[11px] text-muted tabular-nums">{variant.detail}</span>}
-                          {index === selected && <Check size={14} aria-hidden="true" />}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Speed Section */}
-              <div className="mb-3.5">
-                <p className="mb-1.5 text-xs font-medium text-muted">ความเร็วในการเล่น</p>
-                <div className="grid grid-cols-6 gap-1.5">
+              {/* Speed Pill Chips */}
+              <div className="mb-4">
+                <p className="mb-2 text-xs font-medium text-muted">ความเร็ว</p>
+                <div className="flex flex-wrap gap-2">
                   {SPEEDS.map(option => (
                     <button
                       key={option}
                       type="button"
                       onClick={() => changeRate(option)}
-                      className={`flex h-9 items-center justify-center rounded-xl text-xs font-medium tabular-nums ${
+                      className={`inline-flex h-10 min-w-14 items-center justify-center rounded-full border px-3.5 text-xs font-semibold tabular-nums transition-colors ${
                         rate === option
-                          ? "bg-accent text-white shadow-xs"
-                          : "bg-field text-foreground active:bg-accent/15"
+                          ? "border-accent bg-accent text-white shadow-xs"
+                          : "border-border bg-field text-foreground active:bg-accent/10"
                       }`}
                     >
                       {option}x
@@ -1827,36 +1889,42 @@ export function VideoPlayer({
                 </div>
               </div>
 
-              {/* Quick Actions */}
-              <div className="grid grid-cols-2 gap-1.5 border-t border-border pt-3">
-                <button
-                  type="button"
-                  onClick={toggleMute}
-                  className="flex items-center gap-2.5 rounded-xl bg-field px-3 py-2.5 text-start text-xs text-foreground active:bg-accent/10"
-                >
-                  <VolumeIcon size={16} className="shrink-0 text-muted" aria-hidden="true" />
-                  <span className="truncate">{displayVolume === 0 ? "เปิดเสียง" : "ปิดเสียง"}</span>
-                </button>
+              {/* Quality Pill Chips */}
+              {variants.length > 0 && (
+                <div className="mb-4">
+                  <p className="mb-2 text-xs font-medium text-muted">คุณภาพ</p>
+                  <div className="flex flex-wrap gap-2">
+                    {variants.map((variant, index) => (
+                      <button
+                        key={variant.url}
+                        type="button"
+                        onClick={() => changeQuality(index)}
+                        className={`inline-flex h-10 items-center justify-center rounded-full border px-4 text-xs font-semibold transition-colors ${
+                          index === selected
+                            ? "border-accent bg-accent text-white shadow-xs"
+                            : "border-border bg-field text-foreground active:bg-accent/10"
+                        }`}
+                      >
+                        {shortQualityLabel(variant)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
-                <button
-                  type="button"
-                  onClick={toggleLoop}
-                  className={`flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-start text-xs ${
-                    loop ? "bg-accent/15 font-medium text-accent-text" : "bg-field text-foreground"
-                  }`}
-                >
-                  <Repeat size={16} className="shrink-0" aria-hidden="true" />
-                  <span className="truncate">{loop ? "เล่นซ้ำ: เปิด" : "เล่นซ้ำ: ปิด"}</span>
-                </button>
-
-                {pipSupported && (
+              {/* Clean List Rows */}
+              <div className="divide-y divide-border/50 border-t border-border pt-1">
+                {source?.url && (
                   <button
                     type="button"
-                    onClick={togglePip}
-                    className="flex items-center gap-2.5 rounded-xl bg-field px-3 py-2.5 text-start text-xs text-foreground active:bg-accent/10"
+                    onClick={() => {
+                      setOpenMenu(null);
+                      copyText(source.url, "คัดลอกลิงก์วิดีโอแล้ว");
+                    }}
+                    className="flex h-12 w-full items-center gap-3 text-start text-sm text-foreground active:bg-field/60"
                   >
-                    <PictureInPicture2 size={16} className="shrink-0 text-muted" aria-hidden="true" />
-                    <span className="truncate">ภาพซ้อนภาพ (PiP)</span>
+                    <Link2 size={18} className="shrink-0 text-muted" aria-hidden="true" />
+                    <span className="flex-1">คัดลอกลิงก์</span>
                   </button>
                 )}
 
@@ -1867,20 +1935,41 @@ export function VideoPlayer({
                     setLocked(true);
                     showToast("ล็อกหน้าจอสัมผัสแล้ว");
                   }}
-                  className="flex items-center gap-2.5 rounded-xl bg-field px-3 py-2.5 text-start text-xs text-foreground active:bg-accent/10"
+                  className="flex h-12 w-full items-center gap-3 text-start text-sm text-foreground active:bg-field/60"
                 >
-                  <Lock size={16} className="shrink-0 text-muted" aria-hidden="true" />
-                  <span className="truncate">ล็อกหน้าจอสัมผัส</span>
+                  <Lock size={18} className="shrink-0 text-muted" aria-hidden="true" />
+                  <span className="flex-1">ล็อกหน้าจอ</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={toggleLoop}
+                  className="flex h-12 w-full items-center gap-3 text-start text-sm text-foreground active:bg-field/60"
+                >
+                  <Repeat size={18} className="shrink-0 text-muted" aria-hidden="true" />
+                  <span className="flex-1">เล่นซ้ำ</span>
+                  {loop && <Check size={16} className="shrink-0 text-accent-text" aria-hidden="true" />}
                 </button>
 
                 {source?.url && !source.hls && fileId && (
                   <button
                     type="button"
                     onClick={downloadCurrentVariant}
-                    className="flex items-center gap-2.5 rounded-xl bg-field px-3 py-2.5 text-start text-xs text-foreground active:bg-accent/10"
+                    className="flex h-12 w-full items-center gap-3 text-start text-sm text-foreground active:bg-field/60"
                   >
-                    <Download size={16} className="shrink-0 text-muted" aria-hidden="true" />
-                    <span className="truncate">ดาวน์โหลด ({shortQualityLabel(source)})</span>
+                    <Download size={18} className="shrink-0 text-muted" aria-hidden="true" />
+                    <span className="flex-1 truncate">ดาวน์โหลดวิดีโอ ({shortQualityLabel(source)})</span>
+                  </button>
+                )}
+
+                {pipSupported && (
+                  <button
+                    type="button"
+                    onClick={togglePip}
+                    className="flex h-12 w-full items-center gap-3 text-start text-sm text-foreground active:bg-field/60"
+                  >
+                    <PictureInPicture2 size={18} className="shrink-0 text-muted" aria-hidden="true" />
+                    <span className="flex-1">ภาพซ้อนภาพ (PiP)</span>
                   </button>
                 )}
 
@@ -1891,10 +1980,10 @@ export function VideoPlayer({
                       setOpenMenu(null);
                       copyText(JSON.stringify(fileInfo, null, 2), "คัดลอกข้อมูล JSON แล้ว");
                     }}
-                    className="flex items-center gap-2.5 rounded-xl bg-field px-3 py-2.5 text-start text-xs text-foreground active:bg-accent/10"
+                    className="flex h-12 w-full items-center gap-3 text-start text-sm text-foreground active:bg-field/60"
                   >
-                    <Braces size={16} className="shrink-0 text-muted" aria-hidden="true" />
-                    <span className="truncate">คัดลอก JSON</span>
+                    <Braces size={18} className="shrink-0 text-muted" aria-hidden="true" />
+                    <span className="flex-1">คัดลอกข้อมูล JSON</span>
                   </button>
                 )}
 
@@ -1904,30 +1993,17 @@ export function VideoPlayer({
                     setOpenMenu(null);
                     setStatsOpen(prev => !prev);
                   }}
-                  className={`flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-start text-xs ${
-                    statsOpen ? "bg-accent/15 font-medium text-accent-text" : "bg-field text-foreground"
-                  }`}
+                  className="flex h-12 w-full items-center gap-3 text-start text-sm text-foreground active:bg-field/60"
                 >
-                  <Activity size={16} className="shrink-0" aria-hidden="true" />
-                  <span className="truncate">สถิติเด็กเนิร์ด</span>
+                  <Activity size={18} className="shrink-0 text-muted" aria-hidden="true" />
+                  <span className="flex-1">สถิติสำหรับเด็กเนิร์ด</span>
+                  {statsOpen && <Check size={16} className="shrink-0 text-accent-text" aria-hidden="true" />}
                 </button>
               </div>
             </motion.div>
           </>
         )}
       </AnimatePresence>
-
-      {/* Mobile Footer Gesture Hint (matches image 3: ปัดซ้าย/ขวา ไปวิดีโอถัดไป · ปัดลงเพื่อย่อ) */}
-      {!fullscreen && (
-        <div
-          className="flex flex-1 flex-col items-center justify-end pb-[max(1.25rem,env(safe-area-inset-bottom))] text-center md:hidden"
-          onClick={onClose}
-        >
-          <p className="text-xs text-muted">
-            {totalSiblings > 1 ? "ปัดซ้าย/ขวา ไปวิดีโอถัดไป · ปัดลงเพื่อย่อ" : "ปัดลงเพื่อย่อ"}
-          </p>
-        </div>
-      )}
     </div>
   );
 }

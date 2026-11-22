@@ -56,6 +56,7 @@ export function MediaDialog({ item, items = [], onSelectItem, onClose }) {
   const dialog = useRef(null);
   const closingRef = useRef(false);
   const [visible, setVisible] = useState(true);
+  const [minimized, setMinimized] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const reducedMotion = useReducedMotion();
   const result = useMediaPreview(item, reloadKey);
@@ -79,16 +80,31 @@ export function MediaDialog({ item, items = [], onSelectItem, onClose }) {
   useEffect(() => {
     const el = dialog.current;
     if (!el) return;
-    if (el.open && !el.matches(":modal")) el.removeAttribute("open");
-    if (!el.open) el.showModal();
-  }, []);
+    if (minimized) {
+      // Switch dialog to non-modal open state so the user can browse/scroll the folder behind the mini-player!
+      if (el.matches(":modal")) {
+        el.close();
+        el.show();
+      } else if (!el.open) {
+        el.show();
+      }
+    } else {
+      if (el.open && !el.matches(":modal")) {
+        el.close();
+      }
+      if (!el.open) {
+        el.showModal();
+      }
+    }
+  }, [minimized]);
 
   function requestClose() {
     if (closingRef.current) return;
     closingRef.current = true;
     dialog.current?.querySelector("video")?.pause();
-    if (reducedMotion) {
+    if (reducedMotion || minimized) {
       dialog.current?.close();
+      onClose();
     } else {
       setVisible(false);
     }
@@ -99,16 +115,28 @@ export function MediaDialog({ item, items = [], onSelectItem, onClose }) {
   return (
     <dialog
       ref={dialog}
-      onClose={onClose}
+      onClose={() => {
+        // Ignore programmatic close when toggling between modal <-> non-modal mini-player
+        if (closingRef.current) onClose();
+      }}
       onCancel={event => {
         event.preventDefault();
         requestClose();
       }}
       aria-labelledby="preview-title"
-      className="fixed inset-0 m-0 size-full max-h-none max-w-none items-center justify-center overflow-hidden border-0 bg-transparent p-0 md:p-4 text-foreground backdrop:bg-transparent open:flex"
+      className={
+        minimized
+          ? "pointer-events-none fixed inset-0 z-40 m-0 size-full max-h-none max-w-none overflow-hidden border-0 bg-transparent p-0 text-foreground open:block md:hidden"
+          : "fixed inset-0 m-0 size-full max-h-none max-w-none items-center justify-center overflow-hidden border-0 bg-transparent p-0 md:p-4 text-foreground backdrop:bg-transparent open:flex"
+      }
     >
-      <AnimatePresence onExitComplete={() => dialog.current?.close()}>
-        {visible && (
+      <AnimatePresence onExitComplete={() => {
+        if (closingRef.current) {
+          dialog.current?.close();
+          onClose();
+        }
+      }}>
+        {visible && !minimized && (
           <motion.div
             key="backdrop"
             aria-hidden="true"
@@ -131,7 +159,11 @@ export function MediaDialog({ item, items = [], onSelectItem, onClose }) {
             transition={reducedMotion
               ? { duration: 0.12 }
               : { type: "spring", stiffness: 380, damping: 32, mass: 0.8 }}
-            className="relative z-1 size-full max-h-dvh md:size-auto md:max-h-[calc(100dvh-32px)] md:w-[min(1120px,calc(100vw-32px))] overflow-hidden rounded-none md:rounded-2xl bg-[#080d18] md:bg-panel shadow-[0_16px_48px_rgba(8,13,24,0.45)]"
+            className={
+              minimized
+                ? "pointer-events-auto fixed inset-x-2.5 bottom-[calc(64px+env(safe-area-inset-bottom))] z-50 overflow-hidden rounded-2xl border border-border bg-panel shadow-[0_8px_30px_rgba(8,13,24,0.28)]"
+                : "relative z-1 size-full max-h-dvh md:size-auto md:max-h-[calc(100dvh-32px)] md:w-[min(1120px,calc(100vw-32px))] overflow-hidden rounded-none md:rounded-2xl bg-background md:bg-panel shadow-[0_16px_48px_rgba(8,13,24,0.45)]"
+            }
           >
             <MediaContent
               item={item}
@@ -145,6 +177,9 @@ export function MediaDialog({ item, items = [], onSelectItem, onClose }) {
               hasNext={hasNext}
               onPrev={goPrev}
               onNext={goNext}
+              minimized={minimized}
+              onMinimize={() => setMinimized(true)}
+              onRestore={() => setMinimized(false)}
               onReload={() => setReloadKey(prev => prev + 1)}
               onClose={requestClose}
             />
@@ -1202,6 +1237,9 @@ function MediaContent({
   hasNext,
   onPrev,
   onNext,
+  minimized = false,
+  onMinimize,
+  onRestore,
   onReload,
   onClose,
 }) {
@@ -1305,6 +1343,11 @@ function MediaContent({
       variants={result.variants}
       selected={selected}
       onSelectQuality={setSelectedQuality}
+      siblings={siblings}
+      onSelectSibling={onSelectItem}
+      minimized={minimized}
+      onMinimize={onMinimize}
+      onRestore={onRestore}
       currentIndex={currentIndex}
       totalSiblings={totalSiblings}
       hasPrev={hasPrev}
