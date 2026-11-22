@@ -208,12 +208,28 @@ function ImagePreviewViewer({
   onClose,
 }) {
   const [failed, setFailed] = useState(false);
-  const [zoomed, setZoomed] = useState(false);
+  const [scale, setScale] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [isInteracting, setIsInteracting] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
   const [toast, setToast] = useState("");
+  const stageRef = useRef(null);
   const toastTimer = useRef(null);
-  const lastTapRef = useRef(0);
-  const swipeStartRef = useRef(null);
+  const lastTapRef = useRef({ time: 0, x: 0, y: 0 });
+  const pointersRef = useRef(new Map());
+  const gestureRef = useRef({
+    mode: null, // "pan" | "pinch" | "swipe"
+    startX: 0,
+    startY: 0,
+    startPanX: 0,
+    startPanY: 0,
+    startScale: 1,
+    startDist: 0,
+    midX: 0,
+    midY: 0,
+    moved: false,
+    downTime: 0,
+  });
 
   useEffect(() => () => clearTimeout(toastTimer.current), []);
 
@@ -221,6 +237,47 @@ function ImagePreviewViewer({
     setToast(msg);
     clearTimeout(toastTimer.current);
     toastTimer.current = setTimeout(() => setToast(""), 1800);
+  }
+
+  function clampPan(nextX, nextY, nextScale) {
+    if (nextScale <= 1.01) return { x: 0, y: 0 };
+    const stage = stageRef.current;
+    const w = stage?.clientWidth || 360;
+    const h = stage?.clientHeight || 480;
+    const maxX = Math.max(0, ((nextScale - 1) * w) / 2);
+    const maxY = Math.max(0, ((nextScale - 1) * h) / 2);
+    return {
+      x: Math.max(-maxX, Math.min(maxX, nextX)),
+      y: Math.max(-maxY, Math.min(maxY, nextY)),
+    };
+  }
+
+  function resetZoom() {
+    setScale(1);
+    setPan({ x: 0, y: 0 });
+  }
+
+  function zoomAroundPoint(targetScale, clientX, clientY) {
+    const clampedScale = Math.max(1, Math.min(5, targetScale));
+    if (clampedScale <= 1.01) {
+      resetZoom();
+      return;
+    }
+    const stage = stageRef.current;
+    if (!stage) {
+      setScale(clampedScale);
+      return;
+    }
+    const rect = stage.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const offsetX = clientX - cx;
+    const offsetY = clientY - cy;
+    const ratio = clampedScale / scale;
+    const nextX = offsetX - (offsetX - pan.x) * ratio;
+    const nextY = offsetY - (offsetY - pan.y) * ratio;
+    setScale(clampedScale);
+    setPan(clampPan(nextX, nextY, clampedScale));
   }
 
   async function copyText(text, label) {
@@ -240,42 +297,145 @@ function ImagePreviewViewer({
   }
 
   function handlePointerDown(event) {
-    if (event.pointerType !== "touch") return;
-    swipeStartRef.current = { x: event.clientX, y: event.clientY, time: performance.now() };
+    if (event.button !== undefined && event.button !== 0) return;
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    pointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    setIsInteracting(true);
+
+    const pts = [...pointersRef.current.values()];
+    if (pts.length === 2) {
+      const dx = pts[1].x - pts[0].x;
+      const dy = pts[1].y - pts[0].y;
+      gestureRef.current = {
+        ...gestureRef.current,
+        mode: "pinch",
+        startDist: Math.max(10, Math.hypot(dx, dy)),
+        startScale: scale,
+        startPanX: pan.x,
+        startPanY: pan.y,
+        midX: (pts[0].x + pts[1].x) / 2,
+        midY: (pts[0].y + pts[1].y) / 2,
+        moved: true,
+      };
+    } else if (pts.length === 1) {
+      gestureRef.current = {
+        mode: scale > 1.02 ? "pan" : "swipe",
+        startX: event.clientX,
+        startY: event.clientY,
+        startPanX: pan.x,
+        startPanY: pan.y,
+        startScale: scale,
+        startDist: 0,
+        midX: event.clientX,
+        midY: event.clientY,
+        moved: false,
+        downTime: performance.now(),
+      };
+    }
+  }
+
+  function handlePointerMove(event) {
+    if (!pointersRef.current.has(event.pointerId)) return;
+    pointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    const pts = [...pointersRef.current.values()];
+    const g = gestureRef.current;
+
+    if (pts.length === 2 && g.mode === "pinch") {
+      const dx = pts[1].x - pts[0].x;
+      const dy = pts[1].y - pts[0].y;
+      const dist = Math.max(10, Math.hypot(dx, dy));
+      const nextScale = Math.max(1, Math.min(5, g.startScale * (dist / g.startDist)));
+      const curMidX = (pts[0].x + pts[1].x) / 2;
+      const curMidY = (pts[0].y + pts[1].y) / 2;
+      const ratio = nextScale / g.startScale;
+      const stage = stageRef.current;
+      const rect = stage?.getBoundingClientRect();
+      const cx = rect ? rect.left + rect.width / 2 : curMidX;
+      const cy = rect ? rect.top + rect.height / 2 : curMidY;
+      const focalX = g.midX - cx;
+      const focalY = g.midY - cy;
+      const nextX = focalX - (focalX - g.startPanX) * ratio + (curMidX - g.midX);
+      const nextY = focalY - (focalY - g.startPanY) * ratio + (curMidY - g.midY);
+      setScale(nextScale);
+      setPan(clampPan(nextX, nextY, nextScale));
+      return;
+    }
+
+    if (pts.length === 1) {
+      const dx = event.clientX - g.startX;
+      const dy = event.clientY - g.startY;
+      if (Math.abs(dx) > 6 || Math.abs(dy) > 6) {
+        g.moved = true;
+      }
+      if (g.mode === "pan" && scale > 1.02) {
+        setPan(clampPan(g.startPanX + dx, g.startPanY + dy, scale));
+      }
+    }
   }
 
   function handlePointerUp(event) {
-    if (event.pointerType !== "touch" || !swipeStartRef.current) return;
-    const dx = event.clientX - swipeStartRef.current.x;
-    const dy = event.clientY - swipeStartRef.current.y;
-    const dt = performance.now() - swipeStartRef.current.time;
-    swipeStartRef.current = null;
+    if (!pointersRef.current.has(event.pointerId)) return;
+    pointersRef.current.delete(event.pointerId);
+    const remaining = [...pointersRef.current.values()];
 
-    // Double-tap to toggle 2x zoom
-    if (Math.abs(dx) < 16 && Math.abs(dy) < 16 && dt < 260) {
+    if (remaining.length === 1) {
+      // Transition from 2-finger pinch back to 1-finger pan smoothly
+      gestureRef.current = {
+        ...gestureRef.current,
+        mode: scale > 1.02 ? "pan" : "swipe",
+        startX: remaining[0].x,
+        startY: remaining[0].y,
+        startPanX: pan.x,
+        startPanY: pan.y,
+        startScale: scale,
+      };
+      return;
+    }
+
+    setIsInteracting(false);
+    if (scale <= 1.03) {
+      resetZoom();
+    }
+
+    const g = gestureRef.current;
+    const dx = event.clientX - g.startX;
+    const dy = event.clientY - g.startY;
+    const dt = performance.now() - g.downTime;
+
+    // Double-tap / double-click to zoom in (2.5x at tap point) or reset to 1x
+    if (!g.moved && Math.abs(dx) < 16 && Math.abs(dy) < 16 && dt < 280) {
       const now = performance.now();
-      if (now - lastTapRef.current <= 320) {
-        lastTapRef.current = 0;
-        setZoomed(prev => !prev);
+      const last = lastTapRef.current;
+      if (now - last.time <= 320 && Math.hypot(event.clientX - last.x, event.clientY - last.y) < 36) {
+        lastTapRef.current = { time: 0, x: 0, y: 0 };
+        if (scale > 1.05) {
+          resetZoom();
+        } else {
+          zoomAroundPoint(2.5, event.clientX, event.clientY);
+        }
         return;
       }
-      lastTapRef.current = now;
+      lastTapRef.current = { time: now, x: event.clientX, y: event.clientY };
       return;
     }
 
-    if (zoomed) return;
-
-    // Horizontal swipe -> previous / next image in folder
-    if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.25) {
-      if (dx < 0 && hasNext) onNext();
-      else if (dx > 0 && hasPrev) onPrev();
-      return;
+    // Only allow swipe to next/prev file or swipe down to close when not zoomed in
+    if (g.mode === "swipe" && scale <= 1.05) {
+      if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.25) {
+        if (dx < 0 && hasNext) onNext();
+        else if (dx > 0 && hasPrev) onPrev();
+        return;
+      }
+      if (dy > 75 && Math.abs(dy) > Math.abs(dx) * 1.4) {
+        onClose();
+      }
     }
+  }
 
-    // Vertical swipe down -> close viewer
-    if (dy > 75 && Math.abs(dy) > Math.abs(dx) * 1.4) {
-      onClose();
-    }
+  function handleWheel(event) {
+    event.preventDefault();
+    const factor = event.deltaY < 0 ? 1.18 : 1 / 1.18;
+    zoomAroundPoint(scale * factor, event.clientX, event.clientY);
   }
 
   return (
@@ -343,11 +503,17 @@ function ImagePreviewViewer({
         </div>
       )}
 
-      {/* Main Image Stage */}
+      {/* Main Image Stage (supports pinch-to-zoom, double-tap zoom at point, and 1-finger drag pan) */}
       <div
-        className="relative flex min-h-0 w-full flex-1 items-center justify-center overflow-hidden bg-[#111827]/50 md:bg-transparent"
+        ref={stageRef}
+        className={`relative flex min-h-0 w-full flex-1 items-center justify-center overflow-hidden touch-none bg-[#111827]/50 md:bg-transparent ${
+          scale > 1.02 ? (isInteracting ? "cursor-grabbing" : "cursor-grab") : "cursor-zoom-in"
+        }`}
         onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
+        onWheel={handleWheel}
       >
         {failed ? (
           <p className="p-6 text-center text-sm text-warning" role="alert">
@@ -356,14 +522,30 @@ function ImagePreviewViewer({
         ) : (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            className={`block max-h-full w-full object-contain transition-transform duration-200 md:max-h-[calc(100dvh-32px)] ${
-              zoomed ? "scale-200 cursor-zoom-out" : "scale-100"
-            }`}
+            draggable={false}
+            style={{
+              transform: `translate3d(${pan.x}px, ${pan.y}px, 0) scale(${scale})`,
+              transition: isInteracting ? "none" : "transform 180ms cubic-bezier(0.22, 1, 0.36, 1)",
+            }}
+            className="block max-h-full w-full object-contain select-none will-change-transform md:max-h-[calc(100dvh-32px)]"
             src={url}
             alt={item.name}
             referrerPolicy="no-referrer"
             onError={() => setFailed(true)}
           />
+        )}
+
+        {scale > 1.05 && (
+          <button
+            type="button"
+            onClick={event => {
+              event.stopPropagation();
+              resetZoom();
+            }}
+            className="absolute bottom-3 left-1/2 z-20 -translate-x-1/2 rounded-full border border-white/20 bg-[#080d18]/80 px-3 py-1 text-xs font-medium text-white shadow-md backdrop-blur-md active:scale-95"
+          >
+            ซูม {scale.toFixed(1)}x · แตะเพื่อรีเซ็ต
+          </button>
         )}
 
         {/* Desktop Previous / Next Arrows */}

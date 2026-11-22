@@ -123,6 +123,8 @@ export function VideoPlayer({
   const initialAutoPlayRef = useRef(true);
   const wakeLockRef = useRef(null);
   const lastTouchTapRef = useRef({ time: 0, side: null });
+  const lastTouchUpTimeRef = useRef(0);
+  const mouseClickTimerRef = useRef(null);
   const rippleTimerRef = useRef(null);
   const holdTimerRef = useRef(null);
   const holdActiveRef = useRef(false);
@@ -440,6 +442,7 @@ export function VideoPlayer({
     clearTimeout(toastTimerRef.current);
     clearTimeout(rippleTimerRef.current);
     clearTimeout(holdTimerRef.current);
+    clearTimeout(mouseClickTimerRef.current);
   }, []);
 
   function showToast(message) {
@@ -632,6 +635,7 @@ export function VideoPlayer({
 
   function handleVideoPointerUp(event) {
     if (event.pointerType !== "touch") return;
+    lastTouchUpTimeRef.current = performance.now();
     const wasHolding2x = holdActiveRef.current;
     stopHold2x();
     if (wasHolding2x) {
@@ -1014,17 +1018,50 @@ export function VideoPlayer({
         onPointerUp={handleVideoPointerUp}
         onPointerCancel={stopHold2x}
         onClick={event => {
-          // Mouse / pen click toggles playback directly; touch is handled by handleVideoPointerUp
-          if (event.nativeEvent.pointerType === "touch") return;
+          // Ignore synthetic click after a touch interaction
+          if (
+            event.nativeEvent.pointerType === "touch" ||
+            performance.now() - lastTouchUpTimeRef.current < 550
+          ) {
+            return;
+          }
           if (locked) {
             setControlsVisible(true);
+            return;
+          }
+          const stage = stageRef.current;
+          const rect = stage?.getBoundingClientRect();
+          const relX = rect ? (event.clientX - rect.left) / Math.max(1, rect.width) : 0.5;
+          if (relX < 0.36 || relX > 0.64) {
+            clearTimeout(mouseClickTimerRef.current);
+            mouseClickTimerRef.current = setTimeout(() => {
+              togglePlay();
+            }, 220);
             return;
           }
           togglePlay();
         }}
         onDoubleClick={event => {
-          if (event.nativeEvent.pointerType === "touch" || locked) return;
-          toggleFullscreen();
+          if (
+            event.nativeEvent.pointerType === "touch" ||
+            performance.now() - lastTouchUpTimeRef.current < 550 ||
+            locked
+          ) {
+            return;
+          }
+          clearTimeout(mouseClickTimerRef.current);
+          const stage = stageRef.current;
+          if (!stage) return;
+          const rect = stage.getBoundingClientRect();
+          const relX = (event.clientX - rect.left) / Math.max(1, rect.width);
+          // Double-click on left/right edges seeks -10s / +10s; center toggles fullscreen
+          if (relX < 0.36) {
+            triggerDoubleTapSeek("left");
+          } else if (relX > 0.64) {
+            triggerDoubleTapSeek("right");
+          } else {
+            toggleFullscreen();
+          }
         }}
         onLoadedMetadata={handleLoadedMetadata}
         onDurationChange={event => {
